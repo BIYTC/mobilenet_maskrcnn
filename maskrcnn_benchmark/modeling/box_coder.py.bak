@@ -1,0 +1,106 @@
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import math
+
+import torch
+
+
+class BoxCoder(object):
+    """
+    This class encodes and decodes a set of bounding boxes into
+    the representation used for training the regressors.
+	 BoxCoder主要用于编码和解码基准边框（bounding boxes），并将其应用到回归训练中
+    本BoxCoder主要用于解决RCNN论文里提到的Bounding-box regression
+    """
+
+    def __init__(self, weights, bbox_xform_clip=math.log(1000. / 16)):
+        """
+        Arguments:
+            weights (4-element tuple)
+            bbox_xform_clip (float)
+            weights:表示的是x, y, w, h在运算中所占的权重　　　
+            bbox_xform_clip (float)
+        """
+        self.weights = weights
+        self.bbox_xform_clip = bbox_xform_clip # 边框的长和宽的最高值
+
+    def encode(self, reference_boxes, proposals):
+        """
+        Encode a set of proposals with respect to some
+        reference boxes
+
+        Arguments:
+            reference_boxes (Tensor): reference boxes
+            proposals (Tensor): boxes to be encoded
+		这个Encode的作用是实现RCNN中提到的边框回归，其中的回归目标（regression target)t*
+        的计算，主要是计算候选框与与之相关的基准框的偏差
+        参数：
+            proposals：候选边框，由一定规则选出来的可能含有目标的目标边框
+            reference_boxes：与候选边框重叠度最高的基准边框gt
+
+        """
+
+        TO_REMOVE = 1  # TODO remove # 计算两个数之间的真实距离，需要相减之后加１
+        ex_widths = proposals[:, 2] - proposals[:, 0] + TO_REMOVE # 计算候选框的宽度
+        ex_heights = proposals[:, 3] - proposals[:, 1] + TO_REMOVE # 计算候选框的高度
+        ex_ctr_x = proposals[:, 0] + 0.5 * ex_widths # 计算候选框中心的ｘ坐标
+        ex_ctr_y = proposals[:, 1] + 0.5 * ex_heights
+
+        gt_widths = reference_boxes[:, 2] - reference_boxes[:, 0] + TO_REMOVE # 计算基准边框（ground truth)的宽度
+        gt_heights = reference_boxes[:, 3] - reference_boxes[:, 1] + TO_REMOVE
+        gt_ctr_x = reference_boxes[:, 0] + 0.5 * gt_widths # 计算基准边框（ground truth)中心的ｘ坐标
+        gt_ctr_y = reference_boxes[:, 1] + 0.5 * gt_heights
+
+        wx, wy, ww, wh = self.weights # 得到计算回归目标时各个部分的权重
+		# 计算带有权重的回归目标的各个部分
+        targets_dx = wx * (gt_ctr_x - ex_ctr_x) / ex_widths
+        targets_dy = wy * (gt_ctr_y - ex_ctr_y) / ex_heights
+        targets_dw = ww * torch.log(gt_widths / ex_widths)
+        targets_dh = wh * torch.log(gt_heights / ex_heights)
+		# 将回归目标的各个部分合并为一个元组，并依次保存到一个栈里
+        targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh), dim=1)
+        return targets
+
+    def decode(self, rel_codes, boxes):
+        """
+        From a set of original boxes and encoded relative box offsets,
+        get the decoded boxes.
+
+        Arguments:
+            rel_codes (Tensor): encoded boxes
+            boxes (Tensor): reference boxes.
+        """
+
+        boxes = boxes.to(rel_codes.dtype)
+
+        TO_REMOVE = 1  # TODO remove
+        widths = boxes[:, 2] - boxes[:, 0] + TO_REMOVE
+        heights = boxes[:, 3] - boxes[:, 1] + TO_REMOVE
+        ctr_x = boxes[:, 0] + 0.5 * widths
+        ctr_y = boxes[:, 1] + 0.5 * heights
+
+        wx, wy, ww, wh = self.weights
+        dx = rel_codes[:, 0::4] / wx
+        dy = rel_codes[:, 1::4] / wy
+        dw = rel_codes[:, 2::4] / ww
+        dh = rel_codes[:, 3::4] / wh
+
+        # Prevent sending too large values into torch.exp()
+        dw = torch.clamp(dw, max=self.bbox_xform_clip)
+        dh = torch.clamp(dh, max=self.bbox_xform_clip)
+
+        pred_ctr_x = dx * widths[:, None] + ctr_x[:, None]
+        pred_ctr_y = dy * heights[:, None] + ctr_y[:, None]
+        pred_w = torch.exp(dw) * widths[:, None]
+        pred_h = torch.exp(dh) * heights[:, None]
+
+        pred_boxes = torch.zeros_like(rel_codes)
+        # x1
+        pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+        # y1
+        pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
+        # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+        pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
+        # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+        pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
+
+        return pred_boxes

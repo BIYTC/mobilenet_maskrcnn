@@ -1,0 +1,67 @@
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+from maskrcnn_benchmark.modeling import registry
+from torch import nn
+
+# todo 现将预测边框的特征进行池化，再使用边框预测结构和边框回归结构来预测边框的类别以及边框的坐标偏差值
+@registry.ROI_BOX_PREDICTOR.register("FastRCNNPredictor")
+class FastRCNNPredictor(nn.Module):
+    def __init__(self, config, in_channels):
+        super(FastRCNNPredictor, self).__init__()
+		# 当输入层的通道为空时报错
+        assert in_channels is not None
+		# 输入层的通道数
+        num_inputs = in_channels
+		# 得到基准边框的类别数，一般都要加上一类为背景
+        num_classes = config.MODEL.ROI_BOX_HEAD.NUM_CLASSES
+		# 对输入层特征先进行池化
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+		# 创建用于预测边框类别的网络结构：线性链接层，类别数×输入层通道数
+        self.cls_score = nn.Linear(num_inputs, num_classes)
+		# 当模式为方式为CLS_AGNOSTIC_BBOX_REG时，只回归2类bounding box，即前景和背景，否则为实际类别数
+        num_bbox_reg_classes = 2 if config.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
+		# 创建用于预测边框回归的网络结构
+        self.bbox_pred = nn.Linear(num_inputs, num_bbox_reg_classes * 4)
+		# 初始化各种参数
+        nn.init.normal_(self.cls_score.weight, mean=0, std=0.01)
+        nn.init.constant_(self.cls_score.bias, 0)
+
+        nn.init.normal_(self.bbox_pred.weight, mean=0, std=0.001)
+        nn.init.constant_(self.bbox_pred.bias, 0)
+
+    def forward(self, x):
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        cls_logit = self.cls_score(x)
+        bbox_pred = self.bbox_pred(x)
+        return cls_logit, bbox_pred
+
+
+@registry.ROI_BOX_PREDICTOR.register("FPNPredictor")
+class FPNPredictor(nn.Module):
+    def __init__(self, cfg, in_channels):
+        super(FPNPredictor, self).__init__()
+        num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
+        representation_size = in_channels
+
+        self.cls_score = nn.Linear(representation_size, num_classes)
+        num_bbox_reg_classes = 2 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
+        self.bbox_pred = nn.Linear(representation_size, num_bbox_reg_classes * 4)
+
+        nn.init.normal_(self.cls_score.weight, std=0.01)
+        nn.init.normal_(self.bbox_pred.weight, std=0.001)
+        for l in [self.cls_score, self.bbox_pred]:
+            nn.init.constant_(l.bias, 0)
+
+    def forward(self, x):
+        if x.ndimension() == 4:
+            assert list(x.shape[2:]) == [1, 1]
+            x = x.view(x.size(0), -1)
+        scores = self.cls_score(x)
+        bbox_deltas = self.bbox_pred(x)
+
+        return scores, bbox_deltas
+
+
+def make_roi_box_predictor(cfg, in_channels):
+    func = registry.ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
+    return func(cfg, in_channels)
