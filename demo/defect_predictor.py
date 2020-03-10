@@ -9,8 +9,8 @@ from COCOdemo import draw_rectangle
 import json
 from tqdm import tqdm
 
-config_file = "/root/maskrcnn-benchmark-1/configs/e2e_faster_rcnn_X_101_32x8d_FPN_1x.yaml"
-annFile = '/root/maskrcnn-benchmark-1/datasets/coco/annotations/instances_val2014.json'
+config_file = "/root/mobilenet_maskrcnn/configs/mobilenet.yaml"
+annFile = '/root/mobilenet_maskrcnn/datasets/coco/annotations/instances_val2014.json'
 # update the config options with the config file
 cfg.merge_from_file(config_file)
 # manual override some options
@@ -22,13 +22,13 @@ coco_demo = COCODemo(
     confidence_threshold=0.5,
 )
 
-file_root = "/root/maskrcnn-benchmark-1/datasets/coco/val2014/"
+file_root = "/root/mobilenet_maskrcnn/datasets/coco/val2014/"
 file_list = os.listdir(file_root)
 
 now = time.strftime("%Y-%m-%d-%H:%M:%s", time.localtime(time.time()))
 
 # fileimg = "/home/heqing/maskrcnn-benchmark/demo/" + now
-fileimg = "/root/maskrcnn-benchmark-1/demo/" + now
+fileimg = "/root/mobilenet_maskrcnn/demo/" + now
 os.makedirs(fileimg)
 save_out = fileimg + "/"
 # for img_name in file_list:

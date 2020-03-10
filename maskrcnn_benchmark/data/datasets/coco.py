@@ -6,7 +6,6 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 from maskrcnn_benchmark.structures.keypoint import PersonKeypoints
 
-
 min_keypoints_per_image = 10
 
 
@@ -38,7 +37,7 @@ def has_valid_annotation(anno):
 
 class COCODataset(torchvision.datasets.coco.CocoDetection):
     def __init__(
-        self, ann_file, root, remove_images_without_annotations, transforms=None
+            self, ann_file, root, remove_images_without_annotations, transforms=None
     ):
         super(COCODataset, self).__init__(root, ann_file)
         # sort indices for reproducible results
@@ -96,7 +95,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         if self._transforms is not None:
             img, target = self._transforms(img, target)
 
-        return img, target, idx
+        return img, target, idx  # torch.size([3,200,200])
 
     def get_img_info(self, index):
         img_id = self.id_to_img_map[index]

@@ -38,11 +38,11 @@ _C.MODEL.WEIGHT = "/home/heqing/maskrcnn-benchmark/R-501"
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 # Size of the smallest side of the image during training
-_C.INPUT.MIN_SIZE_TRAIN = (200,)  # (800,)
+_C.INPUT.MIN_SIZE_TRAIN = (70,)  # (800,)
 # Maximum size of the side of the image during training
 _C.INPUT.MAX_SIZE_TRAIN = 200
 # Size of the smallest side of the image during testing
-_C.INPUT.MIN_SIZE_TEST = 200
+_C.INPUT.MIN_SIZE_TEST = 70
 # Maximum size of the side of the image during testing
 _C.INPUT.MAX_SIZE_TEST = 200
 # Values to be used for image normalization
@@ -460,3 +460,14 @@ _C.DTYPE = "float32"
 
 # Enable verbosity in apex.amp
 _C.AMP_VERBOSE = False
+
+# --------------------------------------------------------------------------- #
+#MobileNet config
+# --------------------------------------------------------------------------- #
+_C.KERNEL_SIZE = 3
+_C.WIDTH_MULTIPLIER = 1
+_C.DROUPOUT_PROB = 0.2
+_C.NUM_CHANNELS = 3
+_C.IMG_HEIGHT = 200
+_C.IMG_WIDTH = 200
+_C.DOWNSAMPLING = 32

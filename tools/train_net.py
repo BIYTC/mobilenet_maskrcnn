@@ -134,8 +134,9 @@ def main():
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Training")
     parser.add_argument(
         "--config-file",
+        # default="/root/mobilenet_maskrcnn/configs/e2e_faster_rcnn_R_101_FPN_1x.yaml",
+        default="/root/mobilenet_maskrcnn/configs/mobilenet.yaml",
         # default="/home/heqing/maskrcnn-benchmark/configs/e2e_mask_rcnn_R_50_FPN_1x.yaml",
-        default="/root/mobilenet_maskrcnn/configs/e2e_faster_rcnn_R_101_FPN_1x.yaml",
         # default = '/root/maskrcnn-benchmark-1/configs/e2e_faster_rcnn_X_101_32x8d_FPN_1x.yaml',
         # default="/root/maskrcnn-benchmark-1/configs/defect.yaml",
         metavar="FILE",
