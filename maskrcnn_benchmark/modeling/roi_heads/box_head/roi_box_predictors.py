@@ -38,9 +38,9 @@ class FPNPredictor(nn.Module):
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES  # 7 得到基准边框的类别数，一般都要加上一类为背景
         representation_size = in_channels
 
-        self.cls_score = nn.Linear(representation_size, num_classes)
+        self.cls_score = nn.Linear(representation_size, num_classes)  # 7类得分
         num_bbox_reg_classes = 2 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes  # 分类数是否可知
-        self.bbox_pred = nn.Linear(representation_size, num_bbox_reg_classes * 4)
+        self.bbox_pred = nn.Linear(representation_size, num_bbox_reg_classes * 4)  # 回归坐标
 
         nn.init.normal_(self.cls_score.weight, std=0.01)
         nn.init.normal_(self.bbox_pred.weight, std=0.001)

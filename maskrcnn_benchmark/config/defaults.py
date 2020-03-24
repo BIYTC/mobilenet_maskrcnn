@@ -38,11 +38,11 @@ _C.MODEL.WEIGHT = "/home/heqing/maskrcnn-benchmark/R-501"
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 # Size of the smallest side of the image during training
-_C.INPUT.MIN_SIZE_TRAIN = (70,)  # (800,)
+_C.INPUT.MIN_SIZE_TRAIN = (200,)  # (800,)
 # Maximum size of the side of the image during training
 _C.INPUT.MAX_SIZE_TRAIN = 200
 # Size of the smallest side of the image during testing
-_C.INPUT.MIN_SIZE_TEST = 70
+_C.INPUT.MIN_SIZE_TEST = 200
 # Maximum size of the side of the image during testing
 _C.INPUT.MAX_SIZE_TEST = 200
 # Values to be used for image normalization
@@ -50,7 +50,7 @@ _C.INPUT.PIXEL_MEAN = [102.9801, 115.9465, 122.7717]
 # Values to be used for image normalization
 _C.INPUT.PIXEL_STD = [1., 1., 1.]
 # Convert image to BGR format (for Caffe2 models), in range 0-255
-_C.INPUT.TO_BGR255 = True
+_C.INPUT.TO_BGR255 = False
 
 # Image ColorJitter
 _C.INPUT.BRIGHTNESS = 0.0
@@ -124,7 +124,7 @@ _C.MODEL.RPN = CN()
 _C.MODEL.RPN.USE_FPN = True
 # Base RPN anchor sizes given in absolute pixels w.r.t. the scaled network input
 # _C.MODEL.RPN.ANCHOR_SIZES = (32, 64, 128, 256, 512)
-_C.MODEL.RPN.ANCHOR_SIZES = (4, 8, 16, 32, 64)
+_C.MODEL.RPN.ANCHOR_SIZES = (4, 8, 16, 32, 64)  # 边长
 # Stride of the feature map that RPN is attached.
 # For FPN, number of strides should match number of scales
 _C.MODEL.RPN.ANCHOR_STRIDE = (16,)
@@ -181,7 +181,7 @@ _C.MODEL.ROI_HEADS.FG_IOU_THRESHOLD = 0.5
 _C.MODEL.ROI_HEADS.BG_IOU_THRESHOLD = 0.5
 # Default weights on (dx, dy, dw, dh) for normalizing bbox regression targets
 # These are empirically chosen to approximately lead to unit variance targets
-_C.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS = (10., 10., 5., 5.)
+_C.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS = (10., 10., 5., 5.)  # 这个经验调参就很玄学
 # RoI minibatch size *per image* (number of regions of interest [ROIs])
 # Total number of RoIs per training minibatch =
 #   TRAIN.BATCH_SIZE_PER_IM * TRAIN.IMS_PER_BATCH
@@ -209,10 +209,11 @@ _C.MODEL.ROI_BOX_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
 _C.MODEL.ROI_BOX_HEAD.PREDICTOR = "FastRCNNPredictor"
 _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
-_C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)  # 获得原始图到特征图的比例函数，比如原始图到Res50的stage2是1/4
+_C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)  # 获得原始图到特征图的比例函数，比如原始图到Res50的stage2是1/4。
+# 如果网络结构改变注意调整
 _C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 7  # 分类数
 # Hidden layer dimension when using an MLP for the RoI box head
-_C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024
+_C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024  # 这个数嫌大也许可以调小点，第二阶段回归和分类前的全连接层的宽度
 # GN
 _C.MODEL.ROI_BOX_HEAD.USE_GN = True
 # Dilation
@@ -231,12 +232,12 @@ _C.MODEL.ROI_MASK_HEAD.CONV_LAYERS = (256, 256, 256, 256)
 _C.MODEL.ROI_MASK_HEAD.RESOLUTION = 14
 _C.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR = True
 # Whether or not resize and translate masks to the input image.这是干什么用的
-_C.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS = False
+_C.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS = True
 _C.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS_THRESHOLD = 0.5
 # Dilation
-_C.MODEL.ROI_MASK_HEAD.DILATION = 1
+_C.MODEL.ROI_MASK_HEAD.DILATION = 1  # 膨胀卷积
 # GN
-_C.MODEL.ROI_MASK_HEAD.USE_GN = False
+_C.MODEL.ROI_MASK_HEAD.USE_GN = True
 
 _C.MODEL.ROI_KEYPOINT_HEAD = CN()
 _C.MODEL.ROI_KEYPOINT_HEAD.FEATURE_EXTRACTOR = "KeypointRCNNFeatureExtractor"
@@ -419,7 +420,7 @@ _C.TEST.EXPECTED_RESULTS_SIGMA_TOL = 4
 # Number of images per batch
 # This is global, so if we have 8 GPUs and IMS_PER_BATCH = 16, each GPU will
 # see 2 images per batch
-_C.TEST.IMS_PER_BATCH = 4
+_C.TEST.IMS_PER_BATCH = 1
 # Number of detections per image
 _C.TEST.DETECTIONS_PER_IMG = 100
 
@@ -430,6 +431,7 @@ _C.TEST.DETECTIONS_PER_IMG = 100
 _C.TEST.BBOX_AUG = CN()
 
 # Enable test-time augmentation for bounding box detection if True
+# ENABLED是多尺度测试的flag，False表示用单尺度测试，速度较快。如果设置成True，则采用多尺度测试的方式
 _C.TEST.BBOX_AUG.ENABLED = False
 
 # Horizontal flip at the original scale (id transform)
@@ -462,7 +464,7 @@ _C.DTYPE = "float32"
 _C.AMP_VERBOSE = False
 
 # --------------------------------------------------------------------------- #
-#MobileNet config
+# MobileNet config
 # --------------------------------------------------------------------------- #
 _C.KERNEL_SIZE = 3
 _C.WIDTH_MULTIPLIER = 1

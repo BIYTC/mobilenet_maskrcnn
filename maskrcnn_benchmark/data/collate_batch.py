@@ -25,6 +25,7 @@ class BBoxAugCollator(object):
     From a list of samples from the dataset,
     returns the images and targets.
     Images should be converted to batched images in `im_detect_bbox_aug`
+    从数据集的样本列表中，返回图像和目标。图像应在aug的“im_detect_bbox_aug”框中转换为成批图像`
     """
 
     def __call__(self, batch):

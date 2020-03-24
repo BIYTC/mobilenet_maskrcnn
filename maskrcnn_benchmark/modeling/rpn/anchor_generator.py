@@ -63,7 +63,7 @@ class AnchorGenerator(nn.Module):
                 ).float()
                 for anchor_stride, size in zip(anchor_strides, sizes)  # anchor_stride和size是一一对应的,
                 # 一个stride对应一种size
-            ]
+            ]  # 返回"步长"个tensor，每个tensor里包含"长宽比个数"个tensor
         self.strides = anchor_strides
         self.cell_anchors = BufferList(cell_anchors)
         self.straddle_thresh = straddle_thresh
@@ -142,7 +142,7 @@ def make_anchor_generator(config):  # anchor的大小，可以为多个，其大
     anchor_stride = config.MODEL.RPN.ANCHOR_STRIDE  # (4, 8, 16, 32, 64)
     straddle_thresh = config.MODEL.RPN.STRADDLE_THRESH  # 0
 
-    if config.MODEL.RPN.USE_FPN:  # FPN需要保证，stride个数，size个数以及FPN的层数相同。
+    if config.MODEL.RPN.USE_FPN:  # FPN需要保证，stride个数，size个数相同。
         assert len(anchor_stride) == len(
             anchor_sizes
         ), "FPN should have len(ANCHOR_STRIDE) == len(ANCHOR_SIZES)"

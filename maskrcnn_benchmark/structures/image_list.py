@@ -58,7 +58,7 @@ def to_image_list(tensors, size_divisible=0):
             max_size = list(max_size)
             max_size[1] = int(math.ceil(max_size[1] / stride) * stride)
             max_size[2] = int(math.ceil(max_size[2] / stride) * stride)
-            max_size = tuple(max_size)
+            max_size = tuple(max_size)  # 这就是为什么图片可以自适应调整大小的核心代码
 
         batch_shape = (len(tensors),) + max_size
         batched_imgs = tensors[0].new(*batch_shape).zero_()

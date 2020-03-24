@@ -18,6 +18,10 @@ class MaskPostProcessor(nn.Module):
 
     If a masker object is passed, it will additionally
     project the masks in the image according to the locations in boxes,
+
+    根据CNN的结果，对掩码进行后处理，取最大概率类（CNN直接输出，大小固定）对应的掩码，
+    并返回BoxList的mask字段中的掩码。如果通过了遮罩对象，
+    它将根据框中的位置在图像中另外投影遮罩，
     """
 
     def __init__(self, masker=None):
@@ -163,6 +167,7 @@ class Masker(object):
     """
     Projects a set of masks in an image on the locations
     specified by the bounding boxes
+    将图像中的一组遮罩投影到边界框指定的位置
     """
 
     def __init__(self, threshold=0.5, padding=1):
@@ -200,7 +205,7 @@ class Masker(object):
 
 
 def make_roi_mask_post_processor(cfg):
-    if cfg.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS:  # 这个是干什么用的
+    if cfg.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS:  # 这个是干什么用的，也许有正面效果
         mask_threshold = cfg.MODEL.ROI_MASK_HEAD.POSTPROCESS_MASKS_THRESHOLD
         masker = Masker(threshold=mask_threshold, padding=1)
     else:

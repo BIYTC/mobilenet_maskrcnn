@@ -4,7 +4,7 @@ import skimage.io as io
 import pylab
 import cv2
 import os
-from skimage.io import imsave
+# from skimage.io import imsave
 import numpy as np
 import time
 from COCOdemo import draw_rectangle
@@ -14,58 +14,66 @@ from tqdm import tqdm
 
 
 def main():
-    #img_path = 'D:/desktop/Mask_self/datasets/coco/val2014/'
-    img_path='/root/maskrcnn-benchmark/datasets/coco/train2014/'
-    #annFile = 'D:/desktop/Mask_self/datasets/coco/annotations/instances_val2014.json'
-    #annFile = '/root/maskrcnn-benchmark/datasets/coco/annotations/instances_train2014.json'
-    annFile = '/root/maskrcnn-benchmark/demo/anno_image_train/instances_train2014_aug.json'
-    saveDir = '/root/maskrcnn-benchmark/demo/anno_image_train/'
+    img_path = '/root/detectron2/datasets/coco/train2017/'
+    annFile = '/root/detectron2/datasets/coco/annotations/instances_train2017_a.json'
+    # annFile = '/root/anno_image_train/instances_train2017_aug.json'
+    saveDir = '/root/anno_image_train_1/'
     if not os.path.exists(saveDir):
         os.makedirs(saveDir)
     coco = COCO(annFile)
     catNms = ['crazing', 'inclusion', 'patches', 'pitted_surface', 'rolled-in_scale', 'scratches']
     catIds_1 = coco.getCatIds(catNms=catNms)
 
-    # TODO:选择增强方式，以后改成argparse形式
-    img_bbox = False # 选择对图片整体处理还是对bbox做处理，True为对整体处理，False仅对bbox内部做处理
-    mirroring = True   # 选择是否y轴镜像
-    rotating = False  # 选择是否旋转180度,180度旋转为x，y全都镜像一次
-    annwrite = True 
+    # TODO:选择增强方式
+    pross_mode = [{'img_bbox': True, 'mirroring': True, 'rotating': False}, \
+                  {'img_bbox': True, 'mirroring': False, 'rotating': True}, \
+                  {'img_bbox': True, 'mirroring': True, 'rotating': True}, \
+                  {'img_bbox': False, 'mirroring': True, 'rotating': False}, \
+                  {'img_bbox': False, 'mirroring': False, 'rotating': True}, \
+                  {'img_bbox': False, 'mirroring': True, 'rotating': True}, \
+                  ]
+    # img_bbox = False  # 选择对图片整体处理还是对bbox做处理，True为对整体处理，False仅对bbox内部做处理
+    # mirroring = True  # 选择是否y轴镜像
+    # rotating = False  # 选择是否旋转180度,180度旋转为x，y全都镜像一次
+    annwrite = False
     ann_show = False
-    # TODO:获取所有图片的id：
-    img_list = os.listdir(img_path)
-    imgIds_all = set()
-    for i in range(len(catIds_1)):
-        catIds = i + 1
-        imgIds_1 = coco.getImgIds(catIds=catIds)  # 返回包含这些类别的图片id
-        imgIds_all.update(imgIds_1)
-    imgIds_all = list(imgIds_all)
-    imgIds_max = max(imgIds_all)  # 获取最大的图片Id，防止Id重复
-    offset = 1
-    # annIds_offset = 1
-    # annIds_all = set()
-    annId_max = annId_getter(coco, imgIds_all, catIds_1, )  # 获取最大的标注Id
-    for im_idx in tqdm(range(len(imgIds_all))):  # 获取每一张图片
-        img = coco.loadImgs(imgIds_all[im_idx])[0]
-        image_name = img['file_name']
-        # img_show(img_path, image_name)
-        if os.path.exists(os.path.join(img_path, image_name)):
-            img_raw = cv2.imread(os.path.join(img_path, image_name))
-        else:
-            continue
-        (H, W, C) = img_raw.shape  # 获取图片的长宽
-        imgIds_new = imgIds_max + offset
-        offset += 1
-        anns_all = []
-        for i in range(len(catIds_1)):  # 获取每一张图片每个类的标注的id
+    for idx, mode in enumerate(pross_mode):
+        if idx != 0:
+            coco = COCO(saveDir + 'instances_train2017_aug.json')
+        # TODO:获取所有图片的id：
+        imgIds_all = set()
+        for i in range(len(catIds_1)):
             catIds = i + 1
-            annIds = coco.getAnnIds(imgIds=img['id'], catIds=[catIds], iscrowd=None)  # 标注的Id
-            # annIds_all.update(annIds)  # 获得所有的annIds
-            anns = coco.loadAnns(annIds)
-            anns_all.extend(anns)  # 一张图片中包含的所有标注
+            imgIds_1 = coco.getImgIds(catIds=catIds)  # 返回包含这些类别的图片id
+            imgIds_all.update(imgIds_1)
+        imgIds_all = list(imgIds_all)
+        imgIds_max = max(imgIds_all)  # 获取最大的图片Id，防止Id重复
+        # offset = 1
+        # annIds_offset = 1
+        # annIds_all = set()
+        annId_max = annId_getter(coco, imgIds_all, catIds_1, )  # 获取最大的标注Id
+
+        for im_idx in tqdm(range(len(imgIds_all))):  # 获取每一张图片
+            img = coco.loadImgs(imgIds_all[im_idx])[0]
+            image_name = img['file_name']
+            # img_show(img_path, image_name)
+            if os.path.exists(os.path.join(img_path, image_name)):
+                img_raw = cv2.imread(os.path.join(img_path, image_name))
+            else:
+                continue
+            (H, W, C) = img_raw.shape  # 获取图片的长宽
+            # imgIds_new = imgIds_max + offset
+            imgIds_new = imgIds_max + img['id']
+            # offset += 1
+            anns_all = []
+            for i in range(len(catIds_1)):  # 获取每一张图片每个类的标注的id
+                catIds = i + 1
+                annIds = coco.getAnnIds(imgIds=img['id'], catIds=[catIds], iscrowd=None)  # 标注的Id
+                # annIds_all.update(annIds)  # 获得所有的annIds
+                anns = coco.loadAnns(annIds)
+                anns_all.extend(anns)  # 一张图片中包含的所有标注
 
             coordinates = []
-
             for j in range(len(anns_all)):
                 # 获取标注的坐标和类别信息
                 # anns分别为[左上角x，左上角y，x方向长，y方向宽]，坐标原点在左上，向右向下延伸
@@ -79,19 +87,20 @@ def main():
                 coordinates.append(coordinate)
                 # annIds_offset += 1
                 # print(coordinates)
-        if img_bbox:
-            img_raw = img_cropper(img_raw, coordinates, mirroring, rotating)  # 返回bbox内部处理后的图片
-            pass
-        else:
-            img_raw = img_avert(img_raw, mirroring, rotating)  # 对图像做处理
-            # cv2.imshow("img", img_raw)
-            # cv2.waitKey(0)
-            coordinates = ann_avert(coordinates, mirroring, rotating, H, W)  # 对标注做处理
-        image_name = img_name(image_name, img_bbox, mirroring, rotating)
-        if annwrite:  # 是否将转换结果写入标注文件
-            # annId_max = max(list(annIds_all))
-            ann_writer(annFile, image_name, saveDir, imgIds_new, coordinates, img, anns_all, annId_max)
-        draw_rectangle(coordinates, img_raw, image_name, catNms, saveDir, ann_show)
+            if mode['img_bbox']:
+                img_raw = img_cropper(img_raw, coordinates, mode['mirroring'], mode['rotating'])  # 返回bbox内部处理后的图片
+                pass
+            else:
+                img_raw = img_avert(img_raw, mode['mirroring'], mode['rotating'])  # 对图像做处理
+                # cv2.imshow("img", img_raw)
+                # cv2.waitKey(0)
+                coordinates = ann_avert(coordinates, mode['mirroring'], mode['rotating'], H, W)  # 对标注做处理
+            image_name = img_name(image_name, mode['img_bbox'], mode['mirroring'], mode['rotating'])
+            if annwrite:  # 是否将转换结果写入标注文件
+                # annId_max = max(list(annIds_all))
+                ann_writer(annFile, image_name, saveDir, imgIds_new, coordinates, img, anns_all, annId_max)
+            draw_rectangle(coordinates, img_raw, image_name, catNms, saveDir, ann_show)
+
     print("finished transform at" + " " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())))
 
 
@@ -171,7 +180,7 @@ def ann_avert(coordinates, mirroring, rotating, H, W):
 
 # TODO:将转换后的标签写入标注文件,可以参考labelme的文件
 def ann_writer(annFile, imgName, savepath, imgId, coordinates, img_inf, ann_inf, annId_max):
-    outfile = savepath + 'instances_train2014_aug.json'
+    outfile = savepath + 'instances_train2017_aug.json'
     if not os.path.exists(outfile):  # 将原标注文件复制到目标路径
         copyfile(annFile, outfile)
     with open(outfile, 'r', encoding='UTF-8') as f:  # 打开原标注文件
@@ -258,13 +267,17 @@ def coor2COCO(coordinate):
 # TODO：获取最大的标注Id最大值
 def annId_getter(coco, imgIds_all, catIds_1, ):
     annIds_all = set()
+    annIds_list = []
     for im_idx in range(len(imgIds_all)):
         img = coco.loadImgs(imgIds_all[im_idx])[0]
         for i in range(len(catIds_1)):
             catIds = i + 1
             annIds = coco.getAnnIds(imgIds=img['id'], catIds=[catIds], iscrowd=None)  # 标注的Id
+            annIds_list.extend(annIds) if len(annIds) else None
             annIds_all.update(annIds)
     annId_max = max(list(annIds_all))
+    assert len(annIds_list) == len(annIds_all), "不匹配,len(annIds_list):{}不等于len(annIds_all):{}".format(len(annIds_list),
+                                                                                                      len(annIds_all))
     return annId_max
 
 

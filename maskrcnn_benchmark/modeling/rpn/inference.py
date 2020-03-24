@@ -35,6 +35,10 @@ class RPNPostProcessor(torch.nn.Module):
             min_size (int)
             box_coder (BoxCoder)
             fpn_post_nms_top_n (int)
+            常用的参数有：pre_nms_top_n为每一个特征层上选取的边框数；
+            post_nms_top_n为在得到的所有层边框中进一步选择的边框数；
+            nms_thresh为非极大线性抑制（NMS）的阈值；
+            min_size为所能接受的最小的边框大小；
         """
 
         super(RPNPostProcessor, self).__init__()

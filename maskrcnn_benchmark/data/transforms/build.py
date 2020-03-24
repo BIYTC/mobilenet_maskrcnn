@@ -22,10 +22,10 @@ def build_transforms(cfg, is_train=True):
         saturation = 0.0
         hue = 0.0
 
-    to_bgr255 = cfg.INPUT.TO_BGR255
-    normalize_transform = T.Normalize(
-        mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD, to_bgr255=to_bgr255
-    )
+    # to_bgr255 = cfg.INPUT.TO_BGR255
+    # normalize_transform = T.Normalize(
+    #     mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD, to_bgr255=to_bgr255
+    # )
     color_jitter = T.ColorJitter(
         brightness=brightness,
         contrast=contrast,
@@ -40,7 +40,7 @@ def build_transforms(cfg, is_train=True):
             T.RandomHorizontalFlip(flip_horizontal_prob),
             T.RandomVerticalFlip(flip_vertical_prob),
             T.ToTensor(),
-            normalize_transform,
+            # normalize_transform,
         ]
     )
     return transform

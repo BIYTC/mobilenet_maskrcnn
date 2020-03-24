@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--ckpt",
         help="The path to the checkpoint for test, default is the latest checkpoint.",
-        default='/root/mobilenet_maskrcnn/output/model_0050000.pth',
+        default='/root/mobilenet_maskrcnn/output/model_final.pth',
     )
     parser.add_argument(
         "opts",

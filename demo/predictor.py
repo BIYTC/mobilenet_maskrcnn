@@ -132,7 +132,7 @@ class COCODemo(object):
         "toothbrush",
     ]
 '''
-
+    '''
     CATEGORIES = [
         "__background",
         "crazing",
@@ -142,8 +142,8 @@ class COCODemo(object):
         "roll-in_scale",
         "scratches",
     ]
-
     '''
+
     CATEGORIES = [
         "__background",
         "0",
@@ -155,8 +155,7 @@ class COCODemo(object):
         "6",
         "7",
         "8",
-        "9",]
-    '''
+        "9", ]
 
     def __init__(
             self,
@@ -188,8 +187,8 @@ class COCODemo(object):
         self.masker = Masker(threshold=mask_threshold, padding=1)
 
         # used to make colors for each class
-        self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
-
+        # self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
+        self.palette = torch.tensor([2 ** 24 - 1, 2 ** 14 - 1, 2 ** 20 - 1])
         self.cpu_device = torch.device("cpu")
         self.confidence_threshold = confidence_threshold
         self.show_mask_heatmaps = show_mask_heatmaps
@@ -359,15 +358,16 @@ class COCODemo(object):
         """
         masks = predictions.get_field("mask").numpy()
         labels = predictions.get_field("labels")
-
-        colors = self.compute_colors_for_labels(labels).tolist()
+        maskcolor = torch.tensor([i for i in range(masks.shape[0])]) + 1
+        # colors = self.compute_colors_for_labels(labels).tolist()
+        colors = self.compute_colors_for_labels(maskcolor).tolist()
 
         for mask, color in zip(masks, colors):
             thresh = mask[0, :, :, None].astype(np.uint8)
             contours, hierarchy = cv2_util.findContours(
                 thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
-            image = cv2.drawContours(image, contours, -1, color, 3)
+            image = cv2.drawContours(image, contours, -1, color, -1)
 
         composite = image
 
@@ -436,11 +436,14 @@ class COCODemo(object):
         template = "{}: {:.2f}"
         for box, score, label in zip(boxes, scores, labels):
             x, y = box[:2]
-            s = template.format(label, score)
-            cv2.putText(
-                image, s, (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 0, 0), 1
-            )
+            # s = template.format(label, score)
 
+            # cv2.putText(
+            #     image, s, (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 0, 0), 1
+            # )
+            cv2.putText(
+                image, label, (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 0, 0), 1
+            )
         return image
 
 

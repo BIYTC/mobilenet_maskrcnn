@@ -49,7 +49,7 @@ class MaskRCNNFPNFeatureExtractor(nn.Module):
             module = make_conv3x3(
                 next_feature, layer_features,
                 dilation=dilation, stride=1, use_gn=use_gn
-            )
+            )  # 这里用到膨胀卷积了
             self.add_module(layer_name, module)
             next_feature = layer_features
             self.blocks.append(layer_name)
