@@ -52,6 +52,7 @@ class FPN(nn.Module):
         """
         # getattr() 函数用于返回一个对象属性值
         last_inner = getattr(self, self.inner_blocks[-1])(x[-1])  # 先计算最后一层（分辨率最低）特征图的fpn结果
+        # 不用上采样
         results = []
         results.append(getattr(self, self.layer_blocks[-1])(last_inner))
         '''
@@ -71,16 +72,17 @@ class FPN(nn.Module):
             # inner_top_down = F.upsample(last_inner, size=inner_lateral.shape[-2:],
             # mode='bilinear', align_corners=False)
             last_inner = inner_lateral + inner_top_down  # 求和
-            results.insert(0, getattr(self, layer_block)(last_inner))  # 对last_inner做3*3卷积。为了使分辨率最大的在前，将结果插入到0位置
+            results.insert(0, getattr(self, layer_block)(last_inner))  # 对last_inner做3*3卷积
+            # 为了使分辨率最大的在前，将结果插入到0位置
 
         if isinstance(self.top_blocks, LastLevelP6P7):
             last_results = self.top_blocks(x[-1], results[-1])
             results.extend(last_results)
         elif isinstance(self.top_blocks, LastLevelMaxPool):
-            last_results = self.top_blocks(results[-1])
+            last_results = self.top_blocks(results[-1])  # 这还加入了一张特征图,对最小的特征图进行了池化
             results.extend(last_results)
 
-        return tuple(results)  # results不是一个特征图，是4张
+        return tuple(results)  # results不是一个特征图，是5张
 
 
 class LastLevelMaxPool(nn.Module):

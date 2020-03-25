@@ -38,9 +38,9 @@ def train(cfg, local_rank, distributed):
     device = torch.device(cfg.MODEL.DEVICE)  # ！！！！！
     model.to(device)
 
-    for name, value in model.backbone.body.network.named_children():  # 冻结主干网络参数
-        for param in value.parameters():
-            param.requires_grad = False
+    # for name, value in model.backbone.body.network.named_children():  # 冻结主干网络参数
+    #     for param in value.parameters():
+    #         param.requires_grad = False
 
     optimizer = make_optimizer(cfg, model)
     scheduler = make_lr_scheduler(cfg, optimizer)

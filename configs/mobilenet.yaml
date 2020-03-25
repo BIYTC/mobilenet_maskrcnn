@@ -2,7 +2,7 @@ MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "/root/pytorch_mobilenetV2/experiments/FPN_2/checkpoints/model_test_best_clear.pth.tar"
   BACKBONE:
-    CONV_BODY: "MobileV2_FPN"
+    CONV_BODY: "MobileV2_PANET"
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   RPN:

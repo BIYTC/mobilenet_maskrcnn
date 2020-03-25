@@ -473,3 +473,9 @@ _C.NUM_CHANNELS = 3
 _C.IMG_HEIGHT = 200
 _C.IMG_WIDTH = 200
 _C.DOWNSAMPLING = 32
+
+# --------------------------------------------------------------------------- #
+# PANet config
+# --------------------------------------------------------------------------- #
+_C.MODEL.FPN.PANET = CN()
+_C.MODEL.FPN.PANET.USE_GN = True
