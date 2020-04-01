@@ -99,7 +99,7 @@ class RPNHead(nn.Module):
     def forward(self, x):
         logits = []
         bbox_reg = []
-        for feature in x:
+        for feature in x:  # 对每个特征图都做卷积
             t = F.relu(self.conv(feature))
             logits.append(self.cls_logits(t))
             bbox_reg.append(self.bbox_pred(t))
@@ -119,7 +119,7 @@ class RPNModule(torch.nn.Module):
 
         anchor_generator = make_anchor_generator(cfg)  # 锚点生成
 
-        rpn_head = registry.RPN_HEADS[cfg.MODEL.RPN.RPN_HEAD]
+        rpn_head = registry.RPN_HEADS[cfg.MODEL.RPN.RPN_HEAD]  # "SingleConvRPNHead"
         head = rpn_head(
             cfg, in_channels, anchor_generator.num_anchors_per_location()[0]
         )  # rpn_head的作用是评价得分和回归偏移量的2个卷积以及前面的一个3*3卷积
@@ -153,7 +153,7 @@ class RPNModule(torch.nn.Module):
                 testing, it is an empty dict.
         """
         objectness, rpn_box_regression = self.head(features)
-        anchors = self.anchor_generator(images, features)  # 生成锚点区域，这个feature是怎么输入进去的
+        anchors = self.anchor_generator(images, features)  # 生成锚点区域
 
         if self.training:
             return self._forward_train(anchors, objectness, rpn_box_regression, targets)
@@ -173,15 +173,16 @@ class RPNModule(torch.nn.Module):
             with torch.no_grad():
                 boxes = self.box_selector_train(
                     anchors, objectness, rpn_box_regression, targets
-                )
+                )  # 得到评分最高的那些回归框
         loss_objectness, loss_rpn_box_reg = self.loss_evaluator(
             anchors, objectness, rpn_box_regression, targets
-        )
+        )  # 为RPN划分anchor的正负样本，以及目标真值，来为RPN网络提供loss
         losses = {
             "loss_objectness": loss_objectness,
             "loss_rpn_box_reg": loss_rpn_box_reg,
         }
-        return boxes, losses  # rpn网络的返回值
+        return boxes, losses  # rpn网络的返回值, 计算loss的正负样本是先通过NMS过滤，过滤后在利用双阈值划分正负样本
+        # rpn输出的boxes坐标是'xyxy'格式的
 
     def _forward_test(self, anchors, objectness, rpn_box_regression):
         boxes = self.box_selector_test(anchors, objectness, rpn_box_regression)

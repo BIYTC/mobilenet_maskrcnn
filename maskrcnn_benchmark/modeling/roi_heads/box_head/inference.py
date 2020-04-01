@@ -42,20 +42,19 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
         self.cls_agnostic_bbox_reg = cls_agnostic_bbox_reg
         self.bbox_aug_enabled = bbox_aug_enabled
 
-    def forward(self, x, boxes):
+    def forward(self, x, boxes, final_iter=True):
         """
         Arguments:
             x (tuple[tensor, tensor]): x contains the class logits
                 and the box_regression from the model.各个预测边框的类别信息列表(预测边框数×类别数）以及他们的边框回归信息(预测边框数×类别数*4）
             boxes (list[BoxList]): bounding boxes that are used as
                 reference, one for each image 通过之前网络获得的预测边框列表
-
         Returns:
             results (list[BoxList]): one BoxList for each image, containing
                 the extra fields labels and scores返回最终预测边框信息，附上额外的计算出来的该边框的目标得分以及边框等
         """
         class_logits, box_regression = x
-        class_prob = F.softmax(class_logits, -1)
+        class_prob = F.softmax(class_logits, -1)  # 分类类别
 
         # TODO think about a representation of batch of boxes
         image_shapes = [box.size for box in boxes]
@@ -64,9 +63,11 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
 
         if self.cls_agnostic_bbox_reg:
             box_regression = box_regression[:, -4:]
+
         proposals = self.box_coder.decode(
-            box_regression.view(sum(boxes_per_image), -1), concat_boxes
+            box_regression.view(sum(boxes_per_image), -1), concat_boxes  # 回归值和proposal
         )
+
         if self.cls_agnostic_bbox_reg:
             proposals = proposals.repeat(1, class_prob.shape[1])
 
@@ -81,7 +82,7 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
         ):
             boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
             boxlist = boxlist.clip_to_image(remove_empty=False)
-            if not self.bbox_aug_enabled:  # If bbox aug is enabled, we will do it later
+            if not self.bbox_aug_enabled and final_iter:  # If bbox aug is enabled, we will do it later
                 boxlist = self.filter_results(boxlist, num_classes)  # 做NMS
             results.append(boxlist)
         return results
@@ -98,6 +99,11 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
         of object detection confidence scores for each of the object classes in the
         dataset (including the background class). `scores[i, j]`` corresponds to the
         box at `boxes[i, j * 4:(j + 1) * 4]`.
+        从“boxes”返回BoxList并添加概率分数信息，因为额外的字段“boxes”具有shape（#detections，4*#classes），
+        其中每一行表示数据集中每个对象类（包括background类）的预测边界框列表。
+        每行中的检测源于同一个对象建议。“分数”具有形状（“检测”、“类”），
+        其中每行表示数据集中每个对象类（包括背景类）的对象检测置信分数列表。
+        `分数[i，j]``对应于`方框[i，j*4:（j+1）*4]处的方框`
         """
         boxes = boxes.reshape(-1, 4)
         scores = scores.reshape(-1)
@@ -120,12 +126,12 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
         # Skip j = 0, because it's the background class
         inds_all = scores > self.score_thresh
         for j in range(1, num_classes):
-            inds = inds_all[:, j].nonzero().squeeze(1)
-            scores_j = scores[inds, j]
-            boxes_j = boxes[inds, j * 4: (j + 1) * 4]
+            inds = inds_all[:, j].nonzero().squeeze(1)  # 某一张图的某个种类的所有proposal的位置
+            scores_j = scores[inds, j]  # 某一proposal的某个种类的得分
+            boxes_j = boxes[inds, j * 4: (j + 1) * 4]  # 某一proposal的某个种类的实际坐标
             boxlist_for_class = BoxList(boxes_j, boxlist.size, mode="xyxy")
             boxlist_for_class.add_field("scores", scores_j)
-            boxlist_for_class = boxlist_nms(
+            boxlist_for_class = boxlist_nms(  # 只在同类别中做NMS
                 boxlist_for_class, self.nms
             )
             num_labels = len(boxlist_for_class)
@@ -134,11 +140,11 @@ class PostProcessor(nn.Module):  # 对应图中rpn post processor
             )
             result.append(boxlist_for_class)
 
-        result = cat_boxlist(result)
+        result = cat_boxlist(result)  # 某一张图的NMS后剩下的所有种类的proposal
         number_of_detections = len(result)
 
         # Limit to max_per_image detections **over all classes**
-        if number_of_detections > self.detections_per_img > 0:
+        if number_of_detections > self.detections_per_img > 0:  # 再按照scores过滤一遍
             cls_scores = result.get_field("scores")
             image_thresh, _ = torch.kthvalue(
                 cls_scores.cpu(), number_of_detections - self.detections_per_img + 1

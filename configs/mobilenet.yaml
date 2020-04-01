@@ -12,6 +12,8 @@ MODEL:
     PRE_NMS_TOP_N_TEST: 1000
     POST_NMS_TOP_N_TEST: 1000
     FPN_POST_NMS_TOP_N_TEST: 1000
+    FG_IOU_THRESHOLD: 0.5
+    BG_IOU_THRESHOLD: 0.3
   ROI_HEADS:
     USE_FPN: True
   ROI_BOX_HEAD:
@@ -31,6 +33,14 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
     POSTPROCESS_MASKS: False
   MASK_ON: False
+  ROI_BOX_CASCADE_HEAD:
+    ENABLE: True
+    ENABLE: True
+    BBOX_REG_WEIGHTS: (
+      (10.0, 10.0, 5.0, 5.0),
+      (20.0, 20.0, 10.0, 10.0),
+      (30.0, 30.0, 15.0, 15.0),)
+    IOUS: (0.4,0.5,0.6)
 DATASETS:
   TRAIN: ("coco_2014_train",)
   TEST: ("coco_2014_val",)

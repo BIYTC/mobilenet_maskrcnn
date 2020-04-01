@@ -3,7 +3,7 @@ from maskrcnn_benchmark.modeling import registry
 from torch import nn
 
 
-@registry.ROI_BOX_PREDICTOR.register("FastRCNNPredictor")
+@registry.ROI_BOX_CASCADE_PREDICTOR.register("FastRCNNPredictor")
 class FastRCNNPredictor(nn.Module):
     def __init__(self, config, in_channels):
         super(FastRCNNPredictor, self).__init__()
@@ -14,8 +14,7 @@ class FastRCNNPredictor(nn.Module):
         num_classes = config.MODEL.ROI_BOX_HEAD.NUM_CLASSES
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.cls_score = nn.Linear(num_inputs, num_classes)
-        num_bbox_reg_classes = 2 if config.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
-        self.bbox_pred = nn.Linear(num_inputs, num_bbox_reg_classes * 4)
+        self.bbox_pred = nn.Linear(num_inputs, 4)
 
         nn.init.normal_(self.cls_score.weight, mean=0, std=0.01)
         nn.init.constant_(self.cls_score.bias, 0)
@@ -31,16 +30,15 @@ class FastRCNNPredictor(nn.Module):
         return cls_logit, bbox_pred
 
 
-@registry.ROI_BOX_PREDICTOR.register("FPNPredictor")
-class FPNPredictor(nn.Module):
+@registry.ROI_BOX_CASCADE_PREDICTOR.register("FPNPredictor")
+class FPNCASCADEPredictor(nn.Module):
     def __init__(self, cfg, in_channels):
-        super(FPNPredictor, self).__init__()
+        super(FPNCASCADEPredictor, self).__init__()
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES  # 7 得到基准边框的类别数，一般都要加上一类为背景
         representation_size = in_channels
 
         self.cls_score = nn.Linear(representation_size, num_classes)  # 7类得分
-        num_bbox_reg_classes = 2 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes  # 分类数是否可知
-        self.bbox_pred = nn.Linear(representation_size, num_bbox_reg_classes * 4)  # 回归坐标,回归出4*类别数个检测框
+        self.bbox_pred = nn.Linear(representation_size, 4)  # 回归坐标,回归出4个偏差
 
         nn.init.normal_(self.cls_score.weight, std=0.01)
         nn.init.normal_(self.bbox_pred.weight, std=0.001)
@@ -57,6 +55,6 @@ class FPNPredictor(nn.Module):
         return scores, bbox_deltas
 
 
-def make_roi_box_predictor(cfg, in_channels):
-    func = registry.ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
+def make_roi_box_cascade_predictor(cfg, in_channels):
+    func = registry.ROI_BOX_CASCADE_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
     return func(cfg, in_channels)

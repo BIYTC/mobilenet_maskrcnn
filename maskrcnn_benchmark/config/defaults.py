@@ -143,7 +143,7 @@ _C.MODEL.RPN.FG_IOU_THRESHOLD = 0.7
 # (anchor, gt box) pair to be a negative examples (IoU < BG_IOU_THRESHOLD
 # ==> negative RPN example)
 _C.MODEL.RPN.BG_IOU_THRESHOLD = 0.3
-# Total number of RPN examples per image
+# Total number of RPN examples per image，正负样本一共多少个
 _C.MODEL.RPN.BATCH_SIZE_PER_IMAGE = 256
 # Target fraction of foreground (positive) examples per RPN minibatch
 _C.MODEL.RPN.POSITIVE_FRACTION = 0.5
@@ -479,3 +479,16 @@ _C.DOWNSAMPLING = 32
 # --------------------------------------------------------------------------- #
 _C.MODEL.FPN.PANET = CN()
 _C.MODEL.FPN.PANET.USE_GN = True
+
+# ---------------------------------------------------------------------------- #
+# Cascaded Box Head
+# ---------------------------------------------------------------------------- #
+_C.MODEL.ROI_BOX_CASCADE_HEAD = CN()
+# The number of cascade stages is implicitly defined by the length of the following two configs.
+_C.MODEL.ROI_BOX_CASCADE_HEAD.ENABLE = True
+_C.MODEL.ROI_BOX_CASCADE_HEAD.BBOX_REG_WEIGHTS = (
+    (10.0, 10.0, 5.0, 5.0),
+    (20.0, 20.0, 10.0, 10.0),
+    (30.0, 30.0, 15.0, 15.0),
+)
+_C.MODEL.ROI_BOX_CASCADE_HEAD.IOUS = (0.5, 0.6, 0.7)

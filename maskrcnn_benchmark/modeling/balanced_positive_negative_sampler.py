@@ -54,7 +54,7 @@ class BalancedPositiveNegativeSampler(object):
             num_neg = self.batch_size_per_image - num_pos
             # protect against not enough negative examples
             num_neg = min(negative.numel(), num_neg)
-
+            # TODO:在这看一眼正负样本各是多少再做决定阈值选多少
             # randomly select positive and negative examples，随机
             perm1 = torch.randperm(positive.numel(), device=positive.device)[:num_pos]
             perm2 = torch.randperm(negative.numel(), device=negative.device)[:num_neg]

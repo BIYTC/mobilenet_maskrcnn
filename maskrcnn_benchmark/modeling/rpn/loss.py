@@ -40,8 +40,11 @@ class RPNLossComputation(object):
         self.discard_cases = ['not_visibility', 'between_thresholds']  # 指定需要放弃的锚点类型
 
     def match_targets_to_anchors(self, anchor, target, copied_fields=[]):
-        match_quality_matrix = boxlist_iou(target, anchor)  # 计算所有锚点与所有基准边框之间的IoU
-        matched_idxs = self.proposal_matcher(match_quality_matrix)  # 计算所有锚点各自对应的基准边框的索引，包括背景的索引为-1，就是Matcher
+        # 计算所有锚点与所有基准边框之间的IoU，得到匹配矩阵
+        match_quality_matrix = boxlist_iou(target, anchor)
+
+        # 计算所有锚点各自对应的基准边框的索引，包括背景的索引为-1，就是Matcher
+        matched_idxs = self.proposal_matcher(match_quality_matrix)
         # RPN doesn't need any fields from target
         # for creating the labels, so clear them all
         target = target.copy_with_fields(copied_fields)
@@ -55,11 +58,12 @@ class RPNLossComputation(object):
 
     def prepare_targets(self, anchors, targets):
         labels = []
-        regression_targets = []
+        regression_targets = []  # 初始化锚点与gt基准边框之间的偏差
+        # 得到与各个锚点对应的gt
         for anchors_per_image, targets_per_image in zip(anchors, targets):
             matched_targets = self.match_targets_to_anchors(
                 anchors_per_image, targets_per_image, self.copied_fields
-            )
+            )  # 锚点与哪个GT相匹配及GT的值
 
             matched_idxs = matched_targets.get_field("matched_idxs")
             labels_per_image = self.generate_labels_func(matched_targets)
@@ -81,12 +85,13 @@ class RPNLossComputation(object):
             # compute regression targets
             regression_targets_per_image = self.box_coder.encode(
                 matched_targets.bbox, anchors_per_image.bbox
-            )
+            )  # dx dy dw dh
 
             labels.append(labels_per_image)
             regression_targets.append(regression_targets_per_image)
 
-        return labels, regression_targets
+        return labels, regression_targets  # label区分正样本,1还是背景(-1)。
+        # regression_targets为anchor和GT的dx dy dw dh
 
     def __call__(self, anchors, objectness, box_regression, targets):
         """
@@ -100,8 +105,12 @@ class RPNLossComputation(object):
             objectness_loss (Tensor)
             box_loss (Tensor)
         """
+        # 分别将每一个图片的不同FPN层中生成的锚点合并起来
         anchors = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
+
+        # 分别得到每一个图片的所有锚点相对应的基准边框的列表
         labels, regression_targets = self.prepare_targets(anchors, targets)
+
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
         sampled_pos_inds = torch.nonzero(torch.cat(sampled_pos_inds, dim=0)).squeeze(1)
         sampled_neg_inds = torch.nonzero(torch.cat(sampled_neg_inds, dim=0)).squeeze(1)
@@ -116,7 +125,7 @@ class RPNLossComputation(object):
         labels = torch.cat(labels, dim=0)
         regression_targets = torch.cat(regression_targets, dim=0)
 
-        box_loss = smooth_l1_loss(              # 计算锚点边框损失，只是用随机选择的有目标的锚点进行计算
+        box_loss = smooth_l1_loss(  # 计算锚点边框损失，只是用随机选择的有目标的锚点进行计算
             box_regression[sampled_pos_inds],
             regression_targets[sampled_pos_inds],
             beta=1.0 / 9,
@@ -139,8 +148,8 @@ def generate_rpn_labels(matched_targets):
 
 def make_rpn_loss_evaluator(cfg, box_coder):
     matcher = Matcher(
-        cfg.MODEL.RPN.FG_IOU_THRESHOLD,
-        cfg.MODEL.RPN.BG_IOU_THRESHOLD,
+        cfg.MODEL.RPN.FG_IOU_THRESHOLD,  # 0.7
+        cfg.MODEL.RPN.BG_IOU_THRESHOLD,  # 0.3
         allow_low_quality_matches=True,
     )
 

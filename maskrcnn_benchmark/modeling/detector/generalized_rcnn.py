@@ -27,8 +27,9 @@ class GeneralizedRCNN(nn.Module):
         super(GeneralizedRCNN, self).__init__()
 
         self.backbone = build_backbone(cfg)  # 建立骨干网络resnet50N网络,和fpn
-        self.rpn = build_rpn(cfg, self.backbone.out_channels)#建立RPN网络，#out_channels为256*4
-        self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)#建立roi_head结构
+        self.rpn = build_rpn(cfg, self.backbone.out_channels)  # 建立RPN网络，#out_channels为256*4
+        # TODO：可以在roi_heads里加循环实现cascade结构
+        self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)  # 建立roi_head结构
 
     def forward(self, images, targets=None):
         """
@@ -46,10 +47,11 @@ class GeneralizedRCNN(nn.Module):
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
         images = to_image_list(images)
-        features = self.backbone(images.tensors)  #主干网络特征图提取！！！
-        proposals, proposal_losses = self.rpn(images, features, targets)#通过RPN网络
+        features = self.backbone(images.tensors)  # 主干网络特征图提取！！！
+        proposals, proposal_losses = self.rpn(images, features, targets)  # 通过RPN网络得到的结果
         if self.roi_heads:
-            x, result, detector_losses = self.roi_heads(features, proposals, targets)
+            x, result, detector_losses = self.roi_heads(features, proposals, targets)  # detector_losses是个字典
+            # x是坐标分类和回归前的全连接层的输出值
         else:
             # RPN-only models don't have roi_heads
             x = features

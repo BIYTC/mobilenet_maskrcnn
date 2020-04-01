@@ -120,8 +120,7 @@ def build_resnet_fpn_backbone(cfg):
         conv_block=conv_with_kaiming_uniform(
             cfg.MODEL.FPN.USE_GN, cfg.MODEL.FPN.USE_RELU  # GN是否使用组归一化
         ),
-        top_blocks=fpn_module.LastLevelMaxPool() if cfg.MODEL.FPN.PANET.USE_GN == False else None,
-        # 指定最后一层的输出是否需要再经过池化等操作，这里是最大值池化
+        top_blocks=None,
     )
     # PANet结构
     bottom2up = panet_module.Bottom2UP(

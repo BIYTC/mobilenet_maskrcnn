@@ -64,6 +64,7 @@ class AnchorGenerator(nn.Module):
                 for anchor_stride, size in zip(anchor_strides, sizes)  # anchor_stride和size是一一对应的,
                 # 一个stride对应一种size
             ]  # 返回"步长"个tensor，每个tensor里包含"长宽比个数"个tensor
+            # anchor为xyxy格式
         self.strides = anchor_strides
         self.cell_anchors = BufferList(cell_anchors)
         self.straddle_thresh = straddle_thresh
@@ -71,25 +72,32 @@ class AnchorGenerator(nn.Module):
     def num_anchors_per_location(self):
         return [len(cell_anchors) for cell_anchors in self.cell_anchors]
 
-    def grid_anchors(self, grid_sizes):  # 按照步长从图像的*左上角*向全图滑动，从坐上向下，右，按照步长划遍全图，从全图截取anchor
-        # grid_sizes为在某个特征层上特征图的大小，要求stride，gride size和FPN输出层的个数需要是一致的
+    def grid_anchors(self, grid_sizes):  # 按照步长从图像的*左上角*向全图滑动，
+        # 从坐上向下，右，按照步长划遍全图，从全图截取anchor
+        # grid_sizes为在某个特征层上特征图的大小，要求stride，grid_size和FPN输出层的个数需要是一致的
         anchors = []
         for size, stride, base_anchors in zip(
                 grid_sizes, self.strides, self.cell_anchors
         ):
             grid_height, grid_width = size
             device = base_anchors.device
+
+            # 生成anchor在原图x轴上的滑动距离的列表
             shifts_x = torch.arange(
-                0, grid_width * stride, step=stride, dtype=torch.float32, device=device  # 生成anchor在x轴上的滑动距离的列表
+                0, grid_width * stride, step=stride, dtype=torch.float32, device=device
             )
+            # 生成anchor在y轴上的滑动距离的列表
             shifts_y = torch.arange(
-                0, grid_height * stride, step=stride, dtype=torch.float32, device=device  # 生成anchor在y轴上的滑动距离的列表
+                0, grid_height * stride, step=stride, dtype=torch.float32, device=device
             )
+
             # 由anchor在x轴和y轴上需要滑动的距离列表构造出滑动距离的网格，即要滑动完全图anchor在x,y平面的滑动向量
             shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)  # 把anchor在x,y轴上的滑动距离的列表压缩成一维数组
             shift_x = shift_x.reshape(-1)
             shift_y = shift_y.reshape(-1)
-            shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)  # 把anchor在x,y轴上的滑动距离的数组构造出二维的滑动网格
+
+            # 把anchor在x,y轴上的滑动距离的数组构造出二维的滑动网格
+            shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)
 
             anchors.append(
                 (shifts.view(-1, 1, 4) + base_anchors.view(1, -1, 4)).reshape(-1, 4)
@@ -121,16 +129,22 @@ class AnchorGenerator(nn.Module):
         :param feature_maps: 每个图片经过backbone之后提取的各个特征图,　数据维度为：　n_layer * n_pic * map_width * map_height
         :return: anchors：　返回生成的anchor
         """
+        # 各个特征图的大小的列表
         grid_sizes = [feature_map.shape[-2:] for feature_map in feature_maps]
+
+        # 按照步长生成所有的anchor，包括在图片内的和不再图片内的
         anchors_over_all_feature_maps = self.grid_anchors(grid_sizes)
         anchors = []
         for i, (image_height, image_width) in enumerate(image_list.image_sizes):
             anchors_in_image = []
             for anchors_per_feature_map in anchors_over_all_feature_maps:
+                # 由所有的anchor和原始图像构造BoxList
                 boxlist = BoxList(
                     anchors_per_feature_map, (image_width, image_height), mode="xyxy"
                 )
-                self.add_visibility_to(boxlist)
+                # 得到所有的anchor有没有包含在原始图像范围内的信息，
+                # 保存在boxlist里面的extra_fields的visibility中
+                self.add_visibility_to(boxlist)  # 1为不越界，0为越界
                 anchors_in_image.append(boxlist)
             anchors.append(anchors_in_image)
         return anchors
@@ -248,10 +262,11 @@ def _generate_anchors(base_size, scales, aspect_ratios):  # base_size对应步�
     # 在相同的stride下是由size决定的
     """Generate anchor (reference) windows by enumerating aspect ratios X
     scales wrt a reference (0, 0, base_size - 1, base_size - 1) window.
+    generate_anchors(anchor_stride, sizes, aspect_ratios)
     """
     anchor = np.array([1, 1, base_size, base_size],
                       dtype=np.float) - 1  # 特征图上的一个点对应原图上一个(0, 0, base_size - 1, base_size - 1)窗口，
-    # 分别代表这个窗口区域的左下角和右上角的点的坐标
+    # 分别代表这个窗口区域的“左下角”和“右上角”的点的坐标，他的坐标系是左上角为原点
     anchors = _ratio_enum(anchor, aspect_ratios)  # 特征图一个点生成的anchors
     anchors = np.vstack(
         [_scale_enum(anchors[i, :], scales) for i in range(anchors.shape[0])]  # 生成的新anchor是按照size来的
@@ -300,9 +315,9 @@ def _ratio_enum(anchor, ratios):
 def _scale_enum(anchor, scales):
     """Enumerate a set of anchors for each scale wrt an anchor.
     把每个anchor都按照scales来扩充, scales为size/stride。先用stride构造基本的anchor再扩充scales倍即可
-    原来一个点对应stride*stride，乘以scales后为（stride*size/stride)*（stride*size/stride)"""
+    原来特征图上一个点对应原图stride*stride，乘以scales后为（stride*size/stride)*（stride*size/stride)"""
     w, h, x_ctr, y_ctr = _whctrs(anchor)
     ws = w * scales
     hs = h * scales
     anchors = _mkanchors(ws, hs, x_ctr, y_ctr)
-    return anchors
+    return anchors  # 返回的anchor是左上角右下角坐标

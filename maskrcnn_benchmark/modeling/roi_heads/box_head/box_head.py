@@ -37,9 +37,11 @@ class ROIBoxHead(torch.nn.Module):
         """
 
         if self.training:
+            # 在上层得出的预测边框里面，经过特征提取后，重新修正已有的预测边框，去除无效的边框
             # Faster R-CNN subsamples during training the proposals with a fixed
             # positive / negative ratio
             with torch.no_grad():
+                # proposals里面包含：所有正负样本的labels和regression_targets
                 proposals = self.loss_evaluator.subsample(proposals, targets)
 
         # extract features that will be fed to the final classifier. The

@@ -78,7 +78,8 @@ class Pooler(nn.Module):
         self.map_levels = LevelMapper(lvl_min, lvl_max)
 
     def convert_to_roi_format(self, boxes):
-        concat_boxes = cat([b.bbox for b in boxes], dim=0)
+        concat_boxes = cat([b.bbox for b in boxes], dim=0)  # 只是使用了里面的bbox，没有使用extra_fileds里面的东西
+        # 所以mask里的特征提取只与RPN有关，和二阶段回归出来的检测框无关
         device, dtype = concat_boxes.device, concat_boxes.dtype
         ids = cat(
             [
@@ -118,7 +119,8 @@ class Pooler(nn.Module):
         for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):  # 获得所有应该从同一特征层提取特征的roi
             idx_in_level = torch.nonzero(levels == level).squeeze(1)
             rois_per_level = rois[idx_in_level]
-            result[idx_in_level] = pooler(per_level_feature, rois_per_level).to(dtype) # 将大小相似的这些目标特征送入到特定同一个特征层进行池化，得到相应的结果
+            # 将大小相似的这些目标特征送入到特定同一个特征层进行池化，得到相应的结果
+            result[idx_in_level] = pooler(per_level_feature, rois_per_level).to(dtype)
 
         return result
 

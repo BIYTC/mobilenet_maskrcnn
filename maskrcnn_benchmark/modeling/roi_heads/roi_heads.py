@@ -2,6 +2,7 @@
 import torch
 
 from .box_head.box_head import build_roi_box_head
+from .box_head.box_cascade_head import build_roi_box_cascade_head
 from .mask_head.mask_head import build_roi_mask_head
 from .keypoint_head.keypoint_head import build_roi_keypoint_head
 
@@ -30,8 +31,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # optimization: during training, if we share the feature extractor between
             # the box and the mask heads, then we can reuse the features already computed
             if (
-                self.training
-                and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
+                        self.training
+                    and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
             ):
                 mask_features = x
             # During training, self.box() will return the unaltered proposals as "detections"
@@ -44,19 +45,21 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # optimization: during training, if we share the feature extractor between
             # the box and the mask heads, then we can reuse the features already computed
             if (
-                self.training
-                and self.cfg.MODEL.ROI_KEYPOINT_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
+                        self.training
+                    and self.cfg.MODEL.ROI_KEYPOINT_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
             ):
                 keypoint_features = x
             # During training, self.box() will return the unaltered proposals as "detections"
             # this makes the API consistent during training and testing
             x, detections, loss_keypoint = self.keypoint(keypoint_features, detections, targets)
-            losses.update(loss_keypoint) #关键点识别，没用上
+            losses.update(loss_keypoint)  # 关键点识别，没用上
         return x, detections, losses
-#losses是字典，有3个返回值，分别是检测框，分类以及mask损失
-#x是一个[XXX, 256, 14, 14]的tensor，XXX现在为29
-#detections是一个字典,During training, self.box() will return the unaltered proposals as "detections"
-#具体含义不明
+
+
+# losses是字典，有3个返回值，分别是检测框，分类以及mask损失
+# x是一个[XXX, 256, 14, 14]的tensor，XXX现在为29
+# detections是一个字典,During training, self.box() will return the unaltered proposals as "detections"
+# 具体含义不明
 
 def build_roi_heads(cfg, in_channels):
     # individually create the heads, that will be combined together
@@ -65,8 +68,10 @@ def build_roi_heads(cfg, in_channels):
     if cfg.MODEL.RETINANET_ON:
         return []
 
-    if not cfg.MODEL.RPN_ONLY:
+    if not cfg.MODEL.RPN_ONLY and not cfg.MODEL.ROI_BOX_CASCADE_HEAD.ENABLE:
         roi_heads.append(("box", build_roi_box_head(cfg, in_channels)))
+    elif cfg.MODEL.ROI_BOX_CASCADE_HEAD.ENABLE:  # 进入cascade结构
+        roi_heads.append(("box", build_roi_box_cascade_head(cfg, in_channels)))
     if cfg.MODEL.MASK_ON:
         roi_heads.append(("mask", build_roi_mask_head(cfg, in_channels)))
     if cfg.MODEL.KEYPOINT_ON:

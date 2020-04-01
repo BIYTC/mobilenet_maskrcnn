@@ -8,6 +8,7 @@ class BoxCoder(object):
     """
     This class encodes and decodes a set of bounding boxes into
     the representation used for training the regressors.
+    这个类将一组边界框编码和解码为用于训练回归器的表示
     """
 
     def __init__(self, weights, bbox_xform_clip=math.log(1000. / 16)):
@@ -41,22 +42,26 @@ class BoxCoder(object):
         gt_ctr_y = reference_boxes[:, 1] + 0.5 * gt_heights  # 计算基准边框（ground truth)中心的ｙ坐标
 
         wx, wy, ww, wh = self.weights
+        # 计算带有权重的回归目标的各个部分
         targets_dx = wx * (gt_ctr_x - ex_ctr_x) / ex_widths
         targets_dy = wy * (gt_ctr_y - ex_ctr_y) / ex_heights
         targets_dw = ww * torch.log(gt_widths / ex_widths)
         targets_dh = wh * torch.log(gt_heights / ex_heights)
 
+        # 将回归目标的各个部分合并为一个元组，并依次保存到一个栈里
         targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh), dim=1)
         return targets
 
     def decode(self, rel_codes, boxes):
         """
         From a set of original boxes and encoded relative box offsets,
-        get the decoded boxes.根据得到的候选框以及与之对应的中心ｘ，ｙ宽和高的各部分的回归值和得到预测边框
+        get the decoded boxes.
+        根据得到的候选框  以及  与之对应的中心X,Y,W,H的各部分的回归值和得到预测边框
 
         Arguments:
             rel_codes (Tensor): encoded boxes
-            boxes (Tensor): reference boxes.
+            根据候选框与基准边框（ground truth)的差距计算出来的候选边框中心X,Y,W,H的各部分的 变差回归值
+            boxes (Tensor): reference boxes.候选边框
         """
 
         boxes = boxes.to(rel_codes.dtype)

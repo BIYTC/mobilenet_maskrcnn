@@ -64,9 +64,10 @@ def boxlist_iou(boxlist1, boxlist2):
     Reference:
       https://github.com/chainer/chainercv/blob/master/chainercv/utils/bbox/bbox_iou.py
     """
+    # 如果两个边框列表对应的图片大小不同，即对应的是不同的图片，则报错
     if boxlist1.size != boxlist2.size:
         raise RuntimeError(
-                "boxlists should have same image size, got {}, {}".format(boxlist1, boxlist2))
+            "boxlists should have same image size, got {}, {}".format(boxlist1, boxlist2))
     boxlist1 = boxlist1.convert("xyxy")
     boxlist2 = boxlist2.convert("xyxy")
     N = len(boxlist1)

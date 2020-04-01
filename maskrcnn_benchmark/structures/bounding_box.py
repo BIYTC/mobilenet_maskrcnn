@@ -14,52 +14,71 @@ class BoxList(object):
     to an image, we also store the corresponding image dimensions.
     They can contain extra information that is specific to each bounding box, such as
     labels.
+    此类表示一组边界框。边界框表示为Nx4张量。
+    为了唯一确定图像的边界框，我们还存储相应的图像维度。
+    它们可以包含特定于每个边界框的额外信息，例如标签。
+    ！！！他这里的xywh是左上角坐标和W，H
     """
 
     def __init__(self, bbox, image_size, mode="xyxy"):
         device = bbox.device if isinstance(bbox, torch.Tensor) else torch.device("cpu")
         bbox = torch.as_tensor(bbox, dtype=torch.float32, device=device)
+        # bbox的维度应为２：Nx4
         if bbox.ndimension() != 2:
             raise ValueError(
                 "bbox should have 2 dimensions, got {}".format(bbox.ndimension())
             )
+        # 如果bbox的倒数第一个维度不是４个边框信息，则说明有错误
         if bbox.size(-1) != 4:
             raise ValueError(
                 "last dimension of bbox should have a "
                 "size of 4, got {}".format(bbox.size(-1))
             )
+        # 边框信息的格式必须是"xyxy", "xywh"中的一种
         if mode not in ("xyxy", "xywh"):
             raise ValueError("mode should be 'xyxy' or 'xywh'")
 
+        # 初始化Boxlist的各种属性
         self.bbox = bbox
         self.size = image_size  # (image_width, image_height)
         self.mode = mode
-        self.extra_fields = {}
+        self.extra_fields = {}  # 里面装的是什么：可以有anchor的得分objectness；
+        # 可以有锚点框与哪个GT匹配的GT编号matched_idxs,target对应的编号
+        # visibility，1为不越界，0为越界
+        # regression_targets_per_image：回归用的偏差值，一个proposal向target靠近需要的偏移量
 
+    # 增加额外的信息
     def add_field(self, field, field_data):
         self.extra_fields[field] = field_data
 
+    # 从extra_fields中获取名为field的数据
     def get_field(self, field):
         return self.extra_fields[field]
 
+    # 判断extra_fields是否有为field的数据
     def has_field(self, field):
         return field in self.extra_fields
 
+    # 得到保存在extra_fields的所有数据的键值
     def fields(self):
         return list(self.extra_fields.keys())
 
+    # 复制bbox中extra_fields的数据到本boxlist中
     def _copy_extra_fields(self, bbox):
         for k, v in bbox.extra_fields.items():
             self.extra_fields[k] = v
 
+    # 将边框的格式转为mode
     def convert(self, mode):
         if mode not in ("xyxy", "xywh"):
             raise ValueError("mode should be 'xyxy' or 'xywh'")
+        # 如果格式一致则不做任何操作
         if mode == self.mode:
             return self
         # we only have two modes, so don't need to check
         # self.mode
         xmin, ymin, xmax, ymax = self._split_into_xyxy()
+        # 将box转换为指定的格式
         if mode == "xyxy":
             bbox = torch.cat((xmin, ymin, xmax, ymax), dim=-1)
             bbox = BoxList(bbox, self.size, mode=mode)
@@ -69,20 +88,25 @@ class BoxList(object):
                 (xmin, ymin, xmax - xmin + TO_REMOVE, ymax - ymin + TO_REMOVE), dim=-1
             )
             bbox = BoxList(bbox, self.size, mode=mode)
-        bbox._copy_extra_fields(self)
+        bbox._copy_extra_fields(self)  # 把self.extra_fields.items()里的内容复制到新的bbox中吧
+
         return bbox
 
+    # 将边框拆成左下和右上两个坐标点数据
     def _split_into_xyxy(self):
+        # 如果边框数据的格式为xyxy，则直接拆解即可
         if self.mode == "xyxy":
             xmin, ymin, xmax, ymax = self.bbox.split(1, dim=-1)
             return xmin, ymin, xmax, ymax
+
+        # 如果边框数据的格式为xywh，则将box拆解后转为xyxy
         elif self.mode == "xywh":
             TO_REMOVE = 1
             xmin, ymin, w, h = self.bbox.split(1, dim=-1)
             return (
                 xmin,
                 ymin,
-                xmin + (w - TO_REMOVE).clamp(min=0),
+                xmin + (w - TO_REMOVE).clamp(min=0),  # 最小值是0
                 ymin + (h - TO_REMOVE).clamp(min=0),
             )
         else:
@@ -93,17 +117,18 @@ class BoxList(object):
         Returns a resized copy of this bounding box
 
         :param size: The requested size in pixels, as a 2-tuple:
-            (width, height).
+            (width, height).指定像素大小
         """
 
         ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(size, self.size))
+        # 如果长宽的缩放比例一样，则将包含box在内的数据都进行缩放
         if ratios[0] == ratios[1]:
             ratio = ratios[0]
             scaled_box = self.bbox * ratio
             bbox = BoxList(scaled_box, size, mode=self.mode)
             # bbox._copy_extra_fields(self)
             for k, v in self.extra_fields.items():
-                if not isinstance(v, torch.Tensor):
+                if not isinstance(v, torch.Tensor):  # 不清楚为什么要这样定义，torch.Tensor代表了什么
                     v = v.resize(size, *args, **kwargs)
                 bbox.add_field(k, v)
             return bbox
@@ -134,6 +159,7 @@ class BoxList(object):
           :py:attr:`PIL.Image.ROTATE_180`, :py:attr:`PIL.Image.ROTATE_270`,
           :py:attr:`PIL.Image.TRANSPOSE` or :py:attr:`PIL.Image.TRANSVERSE`.
         """
+        # 如果method不是上下翻转或者左右翻转中的一种，则报错
         if method not in (FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM):
             raise NotImplementedError(
                 "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented"
@@ -169,6 +195,7 @@ class BoxList(object):
         Crops a rectangular region from this bounding box. The box is a
         4-tuple defining the left, upper, right, and lower pixel
         coordinate.
+        从此边界框裁剪矩形区域。该框是一个4元组，定义左、上、右和下像素坐标。
         """
         xmin, ymin, xmax, ymax = self._split_into_xyxy()
         w, h = box[2] - box[0], box[3] - box[1]
@@ -181,11 +208,13 @@ class BoxList(object):
         if False:
             is_empty = (cropped_xmin == cropped_xmax) | (cropped_ymin == cropped_ymax)
 
+        # 左下和右上角坐标合并为box
         cropped_box = torch.cat(
             (cropped_xmin, cropped_ymin, cropped_xmax, cropped_ymax), dim=-1
         )
         bbox = BoxList(cropped_box, (w, h), mode="xyxy")
         # bbox._copy_extra_fields(self)
+        # 对BoxList包含的其他数据进行相同的操作
         for k, v in self.extra_fields.items():
             if not isinstance(v, torch.Tensor):
                 v = v.crop(box)
@@ -193,15 +222,16 @@ class BoxList(object):
         return bbox.convert(self.mode)
 
     # Tensor-like methods
-
+    # 重写to函数，转换device或数据形式
     def to(self, device):
         bbox = BoxList(self.bbox.to(device), self.size, self.mode)
         for k, v in self.extra_fields.items():
             if hasattr(v, "to"):
-                v = v.to(device)
+                v = v.to(device)  # 可以把extra_fields.items()也转移到相应的设备
             bbox.add_field(k, v)
         return bbox
 
+    # 得到bbox列表里面的某个box数据，每次调用迭代就新建一个BoxList类，里面包含该bbox的相关数据
     def __getitem__(self, item):
         bbox = BoxList(self.bbox[item], self.size, self.mode)
         for k, v in self.extra_fields.items():
@@ -211,6 +241,7 @@ class BoxList(object):
     def __len__(self):
         return self.bbox.shape[0]
 
+    # 转换成原始图片的的标示框，裁剪到不超过图片
     def clip_to_image(self, remove_empty=True):
         TO_REMOVE = 1
         self.bbox[:, 0].clamp_(min=0, max=self.size[0] - TO_REMOVE)
@@ -223,6 +254,7 @@ class BoxList(object):
             return self[keep]
         return self
 
+    # 计算面积
     def area(self):
         box = self.bbox
         if self.mode == "xyxy":
@@ -235,6 +267,7 @@ class BoxList(object):
 
         return area
 
+    # 复制出带有fields数据的BoxList
     def copy_with_fields(self, fields, skip_missing=False):
         bbox = BoxList(self.bbox, self.size, self.mode)
         if not isinstance(fields, (list, tuple)):
