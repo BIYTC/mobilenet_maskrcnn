@@ -128,7 +128,7 @@ class FastRCNNLossComputation(object):
 
         labels, regression_targets, all_matched_targets = self.prepare_targets(proposals, targets,
                                                                                first_iter, all_matched_targets)
-        sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)  # 我不想让他做平衡!!!
+        sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
 
         proposals = list(proposals)
         # add corresponding label and regression_targets information to the bounding boxes
@@ -150,7 +150,7 @@ class FastRCNNLossComputation(object):
             proposals[img_idx] = proposals_per_image
 
             matched_targets_per_image = all_matched_targets[img_idx][img_sampled_inds]
-            all_matched_targets[img_idx] = matched_targets_per_image
+            all_matched_targets[img_idx] = matched_targets_per_image  # 这里是后加的
 
         self._proposals = proposals  # 这个函数把proposals加入了self
         return proposals, all_matched_targets
@@ -196,7 +196,7 @@ class FastRCNNLossComputation(object):
             map_inds = 4 * labels_pos[:, None] + torch.tensor(
                 [0, 1, 2, 3], device=device)  # 找到属于这个lable的box_regression对应的位置
         else:
-            map_inds = torch.tensor([0, 1, 2, 3], device=device)  # 找到属于这个lable的box_regression对应的位置
+            map_inds = torch.tensor([0, 1, 2, 3], device=device)  # 找到这个box_regression对应的位置
         # note:
         # a:tensor([-1.3039,  0.0075,  0.0796, -0.3488, -0.0306])
         # b=a[:,None]

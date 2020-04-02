@@ -35,7 +35,7 @@ class ROIBoxCascadeHead(torch.nn.Module):
         self.loss_evaluator_2 = make_roi_box_cascade_loss_evaluator(cfg, cfg.MODEL.ROI_BOX_CASCADE_HEAD.IOUS[1],
                                                                     cfg.MODEL.ROI_BOX_CASCADE_HEAD.BBOX_REG_WEIGHTS[1])
         self.loss_evaluator_3 = make_roi_box_cascade_loss_evaluator(cfg, cfg.MODEL.ROI_BOX_CASCADE_HEAD.IOUS[2],
-                                                                cfg.MODEL.ROI_BOX_CASCADE_HEAD.BBOX_REG_WEIGHTS[2])
+                                                                    cfg.MODEL.ROI_BOX_CASCADE_HEAD.BBOX_REG_WEIGHTS[2])
 
     def forward(self, features, proposals, targets=None):
         """
@@ -89,7 +89,7 @@ class ROIBoxCascadeHead(torch.nn.Module):
                                                                    all_matched_targets=all_matched_targets)
         x = self.feature_extractor_2(features, proposals_new)
         class_logits, box_regression = self.predictor_cascade_2(x)
-        loss_classifier, loss_box_reg = self.loss_evaluator_2([class_logits], [box_regression])
+        loss_classifier, loss_box_reg = self.loss_evaluator_2([class_logits], [box_regression], final_iter=False)
         loss_cls.append(loss_classifier)
         loss_reg.append(loss_box_reg)
         result = self.post_processor(
