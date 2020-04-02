@@ -84,9 +84,10 @@ class ROIBoxCascadeHead(torch.nn.Module):
         # 2nd
         if self.training:
             with torch.no_grad():
-                proposals_new, _ = self.loss_evaluator_2.subsample(proposals_new, targets,
-                                                                   first_iter=False,
-                                                                   all_matched_targets=all_matched_targets)
+                proposals_new, all_matched_targets = self.loss_evaluator_2.subsample(proposals_new, targets)
+                # proposals_new, _ = self.loss_evaluator_2.subsample(proposals_new, targets,
+                #                                                    first_iter=False,
+                #                                                    all_matched_targets=all_matched_targets)
         x = self.feature_extractor_2(features, proposals_new)
         class_logits, box_regression = self.predictor_cascade_2(x)
         loss_classifier, loss_box_reg = self.loss_evaluator_2([class_logits], [box_regression], final_iter=False)
@@ -99,9 +100,10 @@ class ROIBoxCascadeHead(torch.nn.Module):
         # 3rd
         if self.training:
             with torch.no_grad():
-                proposals_new, _ = self.loss_evaluator_3.subsample(proposals_new, targets,
-                                                                   first_iter=False,
-                                                                   all_matched_targets=all_matched_targets)
+                proposals_new, all_matched_targets = self.loss_evaluator_3.subsample(proposals_new, targets)
+                # proposals_new, _ = self.loss_evaluator_3.subsample(proposals_new, targets,
+                #                                                    first_iter=False,
+                #                                                    all_matched_targets=all_matched_targets)
         x = self.feature_extractor_3(features, proposals_new)
         class_logits, box_regression = self.predictor(x)
         loss_classifier, loss_box_reg = self.loss_evaluator_3([class_logits], [box_regression])
