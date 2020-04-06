@@ -46,7 +46,7 @@ class BalancedPositiveNegativeSampler(object):
         neg_idx = []
         for matched_idxs_per_image in matched_idxs:  # 按照图片个数，一张图片一张图片的处理
             positive = torch.nonzero(matched_idxs_per_image >= 1).squeeze(1)  # torch.nonzero：输出非0值得索引值
-            negative = torch.nonzero(matched_idxs_per_image == 0).squeeze(1)  # 取出图片中目标边框和背景边框的索引
+            negative = torch.nonzero(matched_idxs_per_image == 0).squeeze(1)  # 取出图片中目标边框和背景边框的索引，-1的就忽略了
 
             num_pos = int(self.batch_size_per_image * self.positive_fraction)
             # protect against not enough positive examples

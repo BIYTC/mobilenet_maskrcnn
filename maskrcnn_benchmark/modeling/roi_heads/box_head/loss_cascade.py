@@ -70,7 +70,8 @@ class FastRCNNLossComputation(object):
                 labels_per_image = labels_per_image.to(dtype=torch.int64)
 
                 # Label background (below the low threshold)
-                bg_inds = matched_idxs == Matcher.BELOW_LOW_THRESHOLD  # -1
+                bg_inds = matched_idxs == Matcher.BELOW_LOW_THRESHOLD  # -1，但是前面RPN给的都是大于0.7或0.5的建议框，这里为什么会有低于0.3框的存在
+                # 答：因为前面RPN是通过得分排序来给出建议的，不是通过IOU
                 labels_per_image[bg_inds] = 0
 
                 # Label ignore proposals (between low and high thresholds)

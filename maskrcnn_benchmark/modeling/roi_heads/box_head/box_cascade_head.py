@@ -71,11 +71,12 @@ class ROIBoxCascadeHead(torch.nn.Module):
         class_logits, box_regression = self.predictor_cascade_1(x)
         # class_logits, box_regression = self.predictor(x)
         # class_logits_list.append(class_logits)
-        loss_classifier, loss_box_reg = self.loss_evaluator_1(
-            [class_logits], [box_regression], final_iter=False
-        )
-        loss_cls.append(loss_classifier)
-        loss_reg.append(loss_box_reg)
+        if self.training:
+            loss_classifier, loss_box_reg = self.loss_evaluator_1(
+                [class_logits], [box_regression], final_iter=False
+            )
+            loss_cls.append(loss_classifier)
+            loss_reg.append(loss_box_reg)
         result = self.post_processor(
             (class_logits, box_regression), proposals_new, final_iter=False)
         proposals_new = result
@@ -90,9 +91,10 @@ class ROIBoxCascadeHead(torch.nn.Module):
                 #                                                    all_matched_targets=all_matched_targets)
         x = self.feature_extractor_2(features, proposals_new)
         class_logits, box_regression = self.predictor_cascade_2(x)
-        loss_classifier, loss_box_reg = self.loss_evaluator_2([class_logits], [box_regression], final_iter=False)
-        loss_cls.append(loss_classifier)
-        loss_reg.append(loss_box_reg)
+        if self.training:
+            loss_classifier, loss_box_reg = self.loss_evaluator_2([class_logits], [box_regression], final_iter=False)
+            loss_cls.append(loss_classifier)
+            loss_reg.append(loss_box_reg)
         result = self.post_processor(
             (class_logits, box_regression), proposals_new, final_iter=False)
         proposals_new = result
@@ -106,11 +108,12 @@ class ROIBoxCascadeHead(torch.nn.Module):
                 #                                                    all_matched_targets=all_matched_targets)
         x = self.feature_extractor_3(features, proposals_new)
         class_logits, box_regression = self.predictor(x)
-        loss_classifier, loss_box_reg = self.loss_evaluator_3([class_logits], [box_regression])
-        loss_cls.append(loss_classifier)
-        loss_reg.append(loss_box_reg)
-        result = self.post_processor(
-            (class_logits, box_regression), proposals_new, final_iter=True)
+        if self.training:
+            loss_classifier, loss_box_reg = self.loss_evaluator_3([class_logits], [box_regression])
+            loss_cls.append(loss_classifier)
+            loss_reg.append(loss_box_reg)
+        # result = self.post_processor(
+        #     (class_logits, box_regression), proposals_new, final_iter=True)
         # -------------------------------------------------------------------------------------------#
         if not self.training:
             result = self.post_processor(

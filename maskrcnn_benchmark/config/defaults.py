@@ -46,9 +46,9 @@ _C.INPUT.MIN_SIZE_TEST = 200
 # Maximum size of the side of the image during testing
 _C.INPUT.MAX_SIZE_TEST = 200
 # Values to be used for image normalization
-_C.INPUT.PIXEL_MEAN = [102.9801, 115.9465, 122.7717]
+_C.INPUT.PIXEL_MEAN = [0.498, 0.498, 0.498]
 # Values to be used for image normalization
-_C.INPUT.PIXEL_STD = [1., 1., 1.]
+_C.INPUT.PIXEL_STD = [0.215, 0.215, 0.215]
 # Convert image to BGR format (for Caffe2 models), in range 0-255
 _C.INPUT.TO_BGR255 = False
 
@@ -458,7 +458,7 @@ _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
 # ---------------------------------------------------------------------------- #
 
 # Precision of input, allowable: (float32, float16)
-_C.DTYPE = "float32"
+_C.DTYPE = "float16"
 
 # Enable verbosity in apex.amp
 _C.AMP_VERBOSE = False
@@ -478,14 +478,14 @@ _C.DOWNSAMPLING = 32
 # PANet config
 # --------------------------------------------------------------------------- #
 _C.MODEL.FPN.PANET = CN()
-_C.MODEL.FPN.PANET.USE_GN = True
+_C.MODEL.FPN.PANET.USE_GN = False
 
 # ---------------------------------------------------------------------------- #
 # Cascaded Box Head
 # ---------------------------------------------------------------------------- #
 _C.MODEL.ROI_BOX_CASCADE_HEAD = CN()
 # The number of cascade stages is implicitly defined by the length of the following two configs.
-_C.MODEL.ROI_BOX_CASCADE_HEAD.ENABLE = True
+_C.MODEL.ROI_BOX_CASCADE_HEAD.ENABLE = False
 _C.MODEL.ROI_BOX_CASCADE_HEAD.BBOX_REG_WEIGHTS = (
     (10.0, 10.0, 5.0, 5.0),
     (20.0, 20.0, 10.0, 10.0),
