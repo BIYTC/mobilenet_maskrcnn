@@ -46,9 +46,9 @@ _C.INPUT.MIN_SIZE_TEST = 200
 # Maximum size of the side of the image during testing
 _C.INPUT.MAX_SIZE_TEST = 200
 # Values to be used for image normalization
-_C.INPUT.PIXEL_MEAN = [0.498, 0.498, 0.498]
+_C.INPUT.PIXEL_MEAN = [126.99, 126.99, 126.99]
 # Values to be used for image normalization
-_C.INPUT.PIXEL_STD = [0.215, 0.215, 0.215]
+_C.INPUT.PIXEL_STD = [54.825, 54.825, 54.825]
 # Convert image to BGR format (for Caffe2 models), in range 0-255
 _C.INPUT.TO_BGR255 = False
 
@@ -211,7 +211,7 @@ _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
 _C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)  # 获得原始图到特征图的比例函数，比如原始图到Res50的stage2是1/4。
 # 如果网络结构改变注意调整
-_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 7  # 分类数
+_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 4  # 分类数
 # Hidden layer dimension when using an MLP for the RoI box head
 _C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024  # 这个数嫌大也许可以调小点，第二阶段回归和分类前的全连接层的宽度
 # GN
@@ -409,7 +409,7 @@ _C.SOLVER.TEST_PERIOD = 0
 # Number of images per batch
 # This is global, so if we have 8 GPUs and IMS_PER_BATCH = 16, each GPU will
 # see 2 images per batch
-_C.SOLVER.IMS_PER_BATCH = 4
+_C.SOLVER.IMS_PER_BATCH = 2
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
@@ -458,7 +458,7 @@ _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
 # ---------------------------------------------------------------------------- #
 
 # Precision of input, allowable: (float32, float16)
-_C.DTYPE = "float16"
+_C.DTYPE = "float32"
 
 # Enable verbosity in apex.amp
 _C.AMP_VERBOSE = False
@@ -470,8 +470,6 @@ _C.KERNEL_SIZE = 3
 _C.WIDTH_MULTIPLIER = 1
 _C.DROUPOUT_PROB = 0.2
 _C.NUM_CHANNELS = 3
-_C.IMG_HEIGHT = 200
-_C.IMG_WIDTH = 200
 _C.DOWNSAMPLING = 32
 
 # --------------------------------------------------------------------------- #

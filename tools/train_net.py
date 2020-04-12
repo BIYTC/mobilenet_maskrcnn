@@ -38,9 +38,10 @@ def train(cfg, local_rank, distributed):
     device = torch.device(cfg.MODEL.DEVICE)  # ！！！！！
     model.to(device)
 
-    # for name, value in model.backbone.body.network.named_children():  # 冻结主干网络参数
-    #     for param in value.parameters():
-    #         param.requires_grad = False
+    for name, value in model.backbone.body.network.named_children():  # 冻结主干网络参数
+        if int(name)>60:
+            for param in value.parameters():
+                param.requires_grad = False
 
     optimizer = make_optimizer(cfg, model)
     scheduler = make_lr_scheduler(cfg, optimizer)
@@ -138,11 +139,8 @@ def main():
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Training")
     parser.add_argument(
         "--config-file",
-        # default="/root/mobilenet_maskrcnn/configs/e2e_faster_rcnn_R_101_FPN_1x.yaml",
-        default="/root/mobilenet_maskrcnn/configs/mobilenet.yaml",
-        # default="/home/heqing/maskrcnn-benchmark/configs/e2e_mask_rcnn_R_50_FPN_1x.yaml",
-        # default = '/root/maskrcnn-benchmark-1/configs/e2e_faster_rcnn_X_101_32x8d_FPN_1x.yaml',
-        # default="/root/maskrcnn-benchmark-1/configs/defect.yaml",
+        # default="/root/mobilenet_maskrcnn/configs/mobilenet.yaml",
+        default="/root/mobilenet_maskrcnn/configs/mobilenet_panet.yaml",
         metavar="FILE",
         help="path to config file",
         type=str,

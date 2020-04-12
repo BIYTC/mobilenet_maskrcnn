@@ -35,7 +35,7 @@ class ROIBoxHead(torch.nn.Module):
             losses (dict[Tensor]): During training, returns the losses for the
                 head. During testing, returns an empty dict.
         """
-
+        pooled_fearures = None
         if self.training:
             # 在上层得出的预测边框里面，经过特征提取后，重新修正已有的预测边框，去除无效的边框
             # Faster R-CNN subsamples during training the proposals with a fixed

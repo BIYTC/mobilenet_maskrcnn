@@ -66,10 +66,14 @@ class ROIMaskHead(torch.nn.Module):
         if self.training and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR:
             x = features
             x = x[torch.cat(positive_inds, dim=0)]
+        elif self.cfg.MODEL.ROI_MASK_HEAD.FEATURE_EXTRACTOR == "MaskRCNNPANETFeatureExtractor":
+            x, x_fc3 = self.feature_extractor(features, proposals)
         else:
             x = self.feature_extractor(features, proposals)
-        mask_logits = self.predictor(x)
 
+        mask_logits = self.predictor(x)
+        if self.cfg.MODEL.ROI_MASK_HEAD.FEATURE_EXTRACTOR == "MaskRCNNPANETFeatureExtractor":
+            mask_logits += x_fc3
         if not self.training:
             result = self.post_processor(mask_logits, proposals)
             return x, result, {}

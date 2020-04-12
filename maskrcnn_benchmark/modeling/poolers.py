@@ -15,7 +15,7 @@ class LevelMapper(object):
     上进行特征提取。本函数的主要目标就是确定某个目标最好从那一层上进行提取
     """
 
-    def __init__(self, k_min, k_max, canonical_scale=224, canonical_level=4, eps=1e-6):
+    def __init__(self, k_min, k_max, canonical_scale=224, canonical_level=4, eps=1e-6):  # 取224在这个数据集用FPN白瞎了
         """
         Arguments:
             k_min (int)
@@ -117,9 +117,9 @@ class Pooler(nn.Module):
             device=device,
         )
         for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):  # 获得所有应该从同一特征层提取特征的roi
-            idx_in_level = torch.nonzero(levels == level).squeeze(1)
+            idx_in_level = torch.nonzero(levels == level).squeeze(1)  # 对应某一层特征图的所有ROI的id
             rois_per_level = rois[idx_in_level]
-            # 将大小相似的这些目标特征送入到特定同一个特征层进行池化，得到相应的结果
+            # 将大小相似的这些目标特征使用同一级别的特征层送入同一个pooler进行池化，得到相应的结果
             result[idx_in_level] = pooler(per_level_feature, rois_per_level).to(dtype)
 
         return result
@@ -135,3 +135,87 @@ def make_pooler(cfg, head_name):
         sampling_ratio=sampling_ratio,
     )
     return pooler
+
+
+class AdaptivePooler(nn.Module):
+    """
+    Pooler for Detection with or without FPN.
+    It currently hard-code ROIAlign in the implementation,
+    but that can be made more generic later on.
+    Also, the requirement of passing the scales is not strictly necessary, as they
+    can be inferred from the size of the feature map / size of original image,
+    which is available thanks to the BoxList.
+    """
+
+    def __init__(self, output_size, scales, sampling_ratio):
+        """
+        Arguments:
+            output_size (list[tuple[int]] or list[int]): output size for the pooled region
+            scales (list[float]): scales for each Pooler
+            sampling_ratio (int): sampling ratio for ROIAlign
+        """
+        super(AdaptivePooler, self).__init__()
+        poolers = []
+        for scale in scales:
+            poolers.append(
+                ROIAlign(
+                    output_size, spatial_scale=scale, sampling_ratio=sampling_ratio
+                )
+            )
+        self.poolers = nn.ModuleList(poolers)  # 加入模型
+        self.output_size = output_size
+        # get the levels in the feature map by leveraging the fact that the network always
+        # downsamples by a factor of 2 at each level.
+        lvl_min = -torch.log2(torch.tensor(scales[0], dtype=torch.float32)).item()
+        lvl_max = -torch.log2(torch.tensor(scales[-1], dtype=torch.float32)).item()
+        self.map_levels = LevelMapper(lvl_min, lvl_max)
+
+    def convert_to_roi_format(self, boxes):
+        concat_boxes = cat([b.bbox for b in boxes], dim=0)  # 只是使用了里面的bbox，没有使用extra_fileds里面的东西
+        # 所以mask里的特征提取只与RPN有关，和二阶段回归出来的检测框无关
+        device, dtype = concat_boxes.device, concat_boxes.dtype
+        ids = cat(
+            [
+                torch.full((len(b), 1), i, dtype=dtype, device=device)
+                for i, b in enumerate(boxes)
+            ],
+            dim=0,
+        )
+        rois = torch.cat([ids, concat_boxes], dim=1)
+        return rois
+
+    def forward(self, x, boxes):
+        """
+        Arguments:
+            x (list[Tensor]): feature maps for each level
+            boxes (list[BoxList]): boxes to be used to perform the pooling operation.
+        Returns:
+            result (Tensor)
+        """
+        num_levels = len(self.poolers)
+        rois = self.convert_to_roi_format(boxes)
+        if num_levels == 1:
+            return self.poolers[0](x[0], rois)
+
+        #levels = self.map_levels(boxes)
+
+        num_rois = len(rois)
+        num_channels = x[0].shape[1] #这个数是多少
+        output_size = self.output_size[0]
+
+        dtype, device = x[0].dtype, x[0].device
+        result = torch.zeros(
+            (num_rois, num_levels, num_channels, output_size, output_size),
+            dtype=dtype,
+            device=device,
+        )  # 初始化结果
+        idx_in_level = torch.arange(num_rois)  # 所有的ROI的id
+        for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):  # 获得所有应该从同一特征层提取特征的roi
+            # idx_in_level = torch.nonzero(levels == level).squeeze(1)  # 对应某一层特征图的所有ROI的id
+            # rois_per_level = rois[idx_in_level]  # 所有的ROI
+            # 将大小相似的这些目标特征使用同一级别的特征层送入同一个pooler进行池化，得到相应的结果
+            # 这里每一个ROI都要对应多个pooling后的特征图
+            # for roi_id in idx_in_level:
+            #     result[roi_id, level] = pooler(per_level_feature, rois).to(dtype)
+            result[idx_in_level, level] = pooler(per_level_feature, rois).to(dtype)
+        return result

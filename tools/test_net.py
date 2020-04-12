@@ -29,7 +29,7 @@ def main():
     parser.add_argument(
         "--config-file",
         #default="/root/maskrcnn-benchmark-1/configs/e2e_faster_rcnn_X_101_32x8d_FPN_1x.yaml",
-        default="/root/mobilenet_maskrcnn/configs/mobilenet.yaml",
+        default="/root/mobilenet_maskrcnn/configs/mobilenet_panet.yaml",
         metavar="FILE",
         help="path to config file",
     )
@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--ckpt",
         help="The path to the checkpoint for test, default is the latest checkpoint.",
-        default='/root/mobilenet_maskrcnn/output/model_0058000.pth',
+        default='/root/mobilenet_maskrcnn/output_panet_defect/model_0058000.pth',
     )
     parser.add_argument(
         "opts",

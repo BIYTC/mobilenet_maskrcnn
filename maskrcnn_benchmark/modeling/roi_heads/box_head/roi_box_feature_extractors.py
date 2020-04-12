@@ -5,7 +5,7 @@ from torch.nn import functional as F
 
 from maskrcnn_benchmark.modeling import registry
 from maskrcnn_benchmark.modeling.backbone import resnet
-from maskrcnn_benchmark.modeling.poolers import Pooler
+from maskrcnn_benchmark.modeling.poolers import Pooler, AdaptivePooler
 from maskrcnn_benchmark.modeling.make_layers import group_norm
 from maskrcnn_benchmark.modeling.make_layers import make_fc
 
@@ -141,6 +141,48 @@ class FPNXconv1fcFeatureExtractor(nn.Module):
         x = self.xconvs(x)
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc6(x))
+        return x
+
+
+@registry.ROI_BOX_FEATURE_EXTRACTORS.register("PANETAdaptiveFeatureExtractor")
+class PANETAdaptiveFeatureExtractor(nn.Module):
+    """
+    Heads for FPN for classification
+    """
+
+    def __init__(self, cfg, in_channels):
+        super(PANETAdaptiveFeatureExtractor, self).__init__()
+
+        resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION  # resolution为roi pooling之后特征图的大小，一般为７
+        scales = cfg.MODEL.ROI_BOX_HEAD.POOLER_SCALES  # (0.25, 0.125, 0.0625, 0.03125)获得原始图到特征图的比例函数，比如原始图到Res50的stage2是1/4
+        sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO  # 取2 有2*2个采样点
+        pooler = AdaptivePooler(
+            output_size=(resolution, resolution),
+            scales=scales,
+            sampling_ratio=sampling_ratio,
+        )
+        input_size = in_channels * resolution ** 2
+        representation_size = cfg.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM  # 1024
+        use_gn = cfg.MODEL.ROI_BOX_HEAD.USE_GN
+        self.pooler = pooler
+        self.fc6_0 = make_fc(input_size, representation_size, use_gn)
+        self.fc6_1 = make_fc(input_size, representation_size, use_gn)
+        self.fc6_2 = make_fc(input_size, representation_size, use_gn)
+        self.fc6_3 = make_fc(input_size, representation_size, use_gn)
+        self.fc7 = make_fc(representation_size, representation_size, use_gn)
+        self.out_channels = representation_size
+
+    def forward(self, x, proposals):
+        x = self.pooler(x, proposals)
+        pooled_fearures = x.view(x.size(0), x.size(1), -1)  # size(0)对对应的是一个batch里的所有ROI的个数
+        x_0 = F.relu(self.fc6_0(pooled_fearures[:, 0, :]))
+        x_1 = F.relu(self.fc6_1(pooled_fearures[:, 1, :]))
+        x_2 = F.relu(self.fc6_2(pooled_fearures[:, 2, :]))
+        x_3 = F.relu(self.fc6_3(pooled_fearures[:, 3, :]))
+        x = torch.stack([x_0, x_1, x_2, x_3], dim=1)
+        x, _ = torch.max(x, 1)  # 将不同特征图的取最大值融合
+        x = F.relu(self.fc7(x)) # 详细结构见PANET论文Figure 6.
+
         return x
 
 

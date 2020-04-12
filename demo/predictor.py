@@ -143,7 +143,7 @@ class COCODemo(object):
         "scratches",
     ]
     '''
-
+    '''
     CATEGORIES = [
         "__background",
         "0",
@@ -156,7 +156,13 @@ class COCODemo(object):
         "7",
         "8",
         "9", ]
-
+    '''
+    CATEGORIES = [
+        "__background",
+        "banana",
+        "apple",
+        "orange",
+    ]
     def __init__(
             self,
             cfg,
